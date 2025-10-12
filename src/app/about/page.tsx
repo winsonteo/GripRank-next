@@ -77,7 +77,7 @@ export default function AboutPage() {
             asChild
             className="mt-8 bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl"
           >
-            <Link href="mailto:contact@griprank.com?subject=Organiser%20Waitlist%20Request">
+            <Link href="/organisers">
               Join the Waitlist
             </Link>
           </Button>
