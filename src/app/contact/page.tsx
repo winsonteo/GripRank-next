@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
+import { motion } from "framer-motion";
+
+import Container from "@/components/Container";
+import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import Container from "@/components/Container";
-import { motion } from "framer-motion";
 
 export default function ContactPage() {
   const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle");
@@ -47,32 +48,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-950 text-neutral-200 font-sans">
-      {/* Header */}
-      <header className="border-b border-neutral-800 bg-neutral-900/80 backdrop-blur-md sticky top-0 z-50">
-        <Container className="flex items-center justify-between py-4">
-          <div className="font-extrabold text-2xl tracking-tight text-blue-400">GripRank</div>
-          <nav className="hidden md:flex gap-8 text-sm font-medium">
-            <Link
-              href="/results"
-              className="hover:text-blue-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-2 py-1"
-            >
-              Results
-            </Link>
-            <Link
-              href="/about"
-              className="hover:text-blue-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-2 py-1"
-            >
-              About
-            </Link>
-            <Link
-              href="/contact"
-              className="text-blue-300 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-2 py-1"
-            >
-              Contact
-            </Link>
-          </nav>
-        </Container>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="py-24 bg-gradient-to-b from-neutral-900 via-neutral-950 to-black">
