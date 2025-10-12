@@ -25,20 +25,22 @@ export default function ContactPage() {
     setErrorMsg("");
 
     try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  const res = await fetch("/api/contact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-      if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error((await res.text()) || "Failed to send");
+  setStatus("success");
+  form.reset();
+} catch (err: unknown) {
+  const message =
+    err instanceof Error ? err.message : typeof err === "string" ? err : "Something went wrong. Please try again.";
+  setStatus("error");
+  setErrorMsg(message as string);
+}
 
-      setStatus("success");
-      form.reset();
-    } catch (err: any) {
-      setStatus("error");
-      setErrorMsg(err?.message || "Something went wrong. Please try again.");
-    }
   }
 
   return (
