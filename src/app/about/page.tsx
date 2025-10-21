@@ -58,7 +58,9 @@ export default function AboutPage() {
             asChild
             className="mt-8 bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-2xl shadow-lg shadow-blue-500/20"
           >
-            <Link href="/results">Explore Live Results</Link>
+            <Link href="https://griprank.com/boulder/leaderboard">
+              Explore Live Results
+            </Link>
           </Button>
         </Container>
       </section>
