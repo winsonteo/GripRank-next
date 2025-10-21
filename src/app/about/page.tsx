@@ -77,8 +77,8 @@ export default function AboutPage() {
             asChild
             className="mt-8 bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl"
           >
-            <Link href="/organisers">
-              Join the Waitlist
+            <Link href="/contact">
+              Contact Us
             </Link>
           </Button>
         </Container>

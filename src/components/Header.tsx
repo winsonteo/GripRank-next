@@ -54,12 +54,12 @@ export default function Header() {
 
         {/* Right CTA (restored styles) */}
         <Button
-  variant="secondary"
-  asChild
-  className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
->
-  <Link href="/organisers">For Organisers</Link>
-</Button>
+          variant="secondary"
+          asChild
+          className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
+        >
+          <Link href="https://griprank.com/boulder/leaderboard">Live Results</Link>
+        </Button>
       </Container>
     </header>
   );

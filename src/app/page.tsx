@@ -28,7 +28,9 @@ export default function HomePage() {
               asChild
               className="mt-8 bg-blue-500 hover:bg-blue-600 text-white text-base px-8 py-4 rounded-2xl shadow-lg shadow-blue-500/20"
             >
-              <Link href="/results">View Competition Results</Link>
+              <Link href="https://griprank.com/boulder/leaderboard">
+                View Competition Results
+              </Link>
             </Button>
           </div>
 
@@ -67,7 +69,7 @@ export default function HomePage() {
       <section className="py-20 bg-neutral-900 border-y border-neutral-800">
         <Container className="text-center">
           <h3 className="text-2xl font-semibold tracking-tight leading-snug text-neutral-100 mb-6">
-            🧰 For Organisers — Coming Soon
+            For Organisers — Coming Soon
           </h3>
           <p className="text-neutral-400 leading-relaxed max-w-2xl mx-auto">
             Streamline your competition from score sheet to leaderboard. GripRank’s organiser tools are in closed testing and launching soon.
@@ -77,8 +79,8 @@ export default function HomePage() {
             asChild
             className="mt-8 bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl"
           >
-            <Link href="/organisers">
-              Get Notified at Launch
+            <Link href="/contact">
+              Contact Us
             </Link>
           </Button>
         </Container>
