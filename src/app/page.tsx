@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 import Container from "@/components/Container";
 import Header from "@/components/Header";
@@ -42,12 +43,16 @@ export default function HomePage() {
           >
             <Card className="shadow-xl rounded-2xl border border-neutral-800 bg-neutral-900 w-full max-w-md overflow-hidden">
               <CardContent className="p-0">
-                <img
-                  src="/Live%20Leaderboard.png"
-                  alt="GripRank Live Leaderboard preview"
-                  className="w-full h-auto block"
-                  loading="eager"
-                />
+                <div className="relative w-full aspect-[9/16]">
+                  <Image
+                    src="/griprank-on-phone.jpg"
+                    alt="GripRank on phone"
+                    fill
+                    priority
+                    sizes="(min-width: 768px) 400px, 90vw"
+                    className="object-cover"
+                  />
+                </div>
               </CardContent>
             </Card>
           </motion.div>
