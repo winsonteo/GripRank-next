@@ -40,9 +40,14 @@ export default function HomePage() {
             transition={{ duration: 0.8 }}
             className="flex-1 flex justify-center"
           >
-            <Card className="shadow-xl rounded-2xl border border-neutral-800 bg-neutral-900 w-full max-w-md">
-              <CardContent className="p-8 text-center text-sm text-neutral-400 leading-relaxed">
-                <p>📊 Live results view mockup (placeholder image)</p>
+            <Card className="shadow-xl rounded-2xl border border-neutral-800 bg-neutral-900 w-full max-w-md overflow-hidden">
+              <CardContent className="p-0">
+                <img
+                  src="/Live%20Leaderboard.png"
+                  alt="GripRank Live Leaderboard preview"
+                  className="w-full h-auto block"
+                  loading="eager"
+                />
               </CardContent>
             </Card>
           </motion.div>
