@@ -45,8 +45,8 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <div className="relative w-full aspect-[9/16]">
                   <Image
-                    src="/griprank-on-phone.jpg"
-                    alt="GripRank on phone"
+                    src="/Griprank on phone mockup 2.png"
+                    alt="GripRank on phone mockup"
                     fill
                     priority
                     sizes="(min-width: 768px) 400px, 90vw"
