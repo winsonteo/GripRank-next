@@ -33,7 +33,7 @@ export default function Header() {
         {/* Nav */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           <Link
-            href="/leaderboard"
+            href="https://griprank.com/boulder/leaderboard"
             className={`${isActive("/leaderboard")} transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md`}
           >
             Results
