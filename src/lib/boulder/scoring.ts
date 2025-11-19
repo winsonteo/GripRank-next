@@ -173,7 +173,7 @@ export function buildLeaderboardRows({
 
     const routes = orderedKeys.map((key) => {
       const detail = entry.details.get(key);
-      const meta = detailsMeta.get(key) || {};
+      const meta = detailsMeta.get(key) ?? ({} as DetailMeta);
       const [prefix, rawKey] = key.includes(":") ? key.split(":", 2) : ["detail", key];
       let detailPoints = 0;
       let topAttempt: number | null = null;

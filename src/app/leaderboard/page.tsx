@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Container from "@/components/Container";
@@ -39,6 +39,14 @@ interface BoulderCategory {
 }
 
 export default function LeaderboardPage() {
+  return (
+    <Suspense fallback={<LeaderboardFallback />}>
+      <LeaderboardContent />
+    </Suspense>
+  );
+}
+
+function LeaderboardContent() {
   const searchParams = useSearchParams();
   const initialSelectionsRef = useRef({
     compId: searchParams?.get("compId") || null,
@@ -75,7 +83,10 @@ export default function LeaderboardPage() {
         const snap = await getDocs(collection(firestore, "boulderComps"));
         if (cancelled) return;
         const comps: BoulderCompetition[] = snap.docs
-          .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+          .map((docSnap) => {
+            const data = (docSnap.data() || {}) as Partial<BoulderCompetition>;
+            return { id: docSnap.id, ...data };
+          })
           .filter(
             (comp) =>
               !["archived", "deleted"].includes(
@@ -133,10 +144,10 @@ export default function LeaderboardPage() {
           collection(firestore, `boulderComps/${selectedComp}/categories`)
         );
         if (cancelled) return;
-        const cats: BoulderCategory[] = snap.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() || {}),
-        }));
+        const cats: BoulderCategory[] = snap.docs.map((docSnap) => {
+          const data = (docSnap.data() || {}) as Partial<BoulderCategory>;
+          return { id: docSnap.id, ...data };
+        });
         cats.sort((a, b) => {
           const orderA =
             typeof a.order === "number" ? a.order : Number.POSITIVE_INFINITY;
@@ -304,7 +315,7 @@ export default function LeaderboardPage() {
             });
           }
 
-          routesSnap.forEach((docSnap, index) => {
+          routesSnap.docs.forEach((docSnap, index) => {
             const data = docSnap.data() || {};
             const routeId = docSnap.id;
             const key = `route:${routeId}`;
@@ -487,6 +498,21 @@ export default function LeaderboardPage() {
   );
 }
 
+function LeaderboardFallback() {
+  return (
+    <main className="py-12 text-white">
+      <Container className="space-y-6">
+        <div className="space-y-2">
+          <div className="h-4 w-32 animate-pulse rounded bg-neutral-800" />
+          <div className="h-8 w-72 animate-pulse rounded bg-neutral-800" />
+        </div>
+        <div className="h-40 animate-pulse rounded-2xl border border-neutral-800 bg-neutral-900/60" />
+        <div className="h-64 animate-pulse rounded-2xl border border-neutral-800 bg-neutral-900/60" />
+      </Container>
+    </main>
+  );
+}
+
 function FilterField({
   label,
   children,
@@ -612,10 +638,14 @@ function toAttemptDocs(snapshot: QuerySnapshot<DocumentData>): AttemptDoc[] {
     const data = docSnap.data() || {};
     const clientAtMs =
       typeof data.clientAtMs === "number" ? data.clientAtMs : null;
+    const clientAtTimestamp =
+      data?.clientAt != null ? timestampValue(data.clientAt) : null;
+    const createdAtField =
+      data?.createdAt != null ? timestampValue(data.createdAt) : null;
     const createdAt =
       clientAtMs ??
-      data.clientAt?.toMillis?.() ??
-      docSnap.createTime?.toMillis?.() ??
+      clientAtTimestamp ??
+      createdAtField ??
       0;
     return {
       athleteId: data.athleteId,
