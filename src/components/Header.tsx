@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Container from "@/components/Container";
 import { usePathname } from "next/navigation";
-import * as React from "react";
 
 export default function Header() {
   const pathname = usePathname();
@@ -16,16 +16,18 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-900/80 backdrop-blur-md">
       <Container className="flex items-center justify-between py-4">
-        {/* Logo (simple <img> so it always shows) */}
         <Link
           href="/"
           className="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
         >
-          <img
-            src="/logo_header.png"           // ensure this file exists in /public
+          <Image
+            src="/logo_header.png"
             alt="GripRank"
-            className="h-12 md:h-14 w-auto"  // visible & responsive
-            loading="eager"
+            width={160}
+            height={56}
+            priority
+            className="h-12 md:h-14 w-auto"
+            sizes="(min-width: 768px) 56px, 48px"
           />
           <span className="sr-only">GripRank</span>
         </Link>
