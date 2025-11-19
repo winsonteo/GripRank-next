@@ -52,10 +52,11 @@ function initPersistence(db: Firestore) {
 
   persistencePromise = enableIndexedDbPersistence(db).catch((error) => {
     // Silently fail on persistence errors - this is not critical
-    // Common errors: multiple tabs, private browsing, quota exceeded
-    if (process.env.NODE_ENV !== "production") {
+    // Common errors: multiple tabs, private browsing, quota exceeded, already initialized
+    if (error?.code !== 'failed-precondition' && process.env.NODE_ENV !== "production") {
       console.warn("[firebase] IndexedDB persistence not available:", error?.code || error?.message);
     }
+    // failed-precondition = Firestore already started (hot reload), ignore silently
   });
 }
 
