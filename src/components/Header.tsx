@@ -23,11 +23,10 @@ export default function Header() {
           <Image
             src="/logo_header.png"
             alt="GripRank"
-            width={160}
-            height={56}
+            width={4001}
+            height={1228}
             priority
             className="h-12 md:h-14 w-auto"
-            sizes="(min-width: 768px) 56px, 48px"
           />
           <span className="sr-only">GripRank</span>
         </Link>
