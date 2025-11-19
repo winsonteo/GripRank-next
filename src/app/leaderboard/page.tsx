@@ -389,19 +389,19 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
   const disableCategorySelect = !selectedComp || categoriesLoading;
 
   return (
-    <main className="py-12 text-white">
+    <main className="py-12 text-[#e5e7eb]" style={{ background: '#0b1220' }}>
       <Container className="space-y-8">
         <header className="space-y-2">
-          <p className="text-sm uppercase tracking-wide text-blue-300">
+          <p className="text-sm uppercase tracking-wide text-[#27a9e1]">
             Live Results
           </p>
           <h1 className="text-4xl font-bold">Boulder Leaderboard</h1>
-          <p className="text-base text-neutral-400">
+          <p className="text-base text-[#9ca3af]">
             Choose a competition, category, and round to view live standings.
           </p>
         </header>
 
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 backdrop-blur">
+        <section className="rounded-2xl border border-[#19bcd6] bg-[#0e1730] p-6">
           <div className="grid gap-4 md:grid-cols-3">
             <FilterField
               label="Competition"
@@ -414,7 +414,7 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
               }
             >
               <select
-                className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white focus:border-blue-500 focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-[#19bcd6] bg-[#101a34] px-4 py-3 text-sm text-[#e5e7eb] focus:border-[#27a9e1] focus:outline-none"
                 value={selectedComp}
                 onChange={(event) => setSelectedComp(event.target.value)}
                 disabled={competitionsLoading || !competitions.length}
@@ -441,7 +441,7 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
               }
             >
               <select
-                className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white focus:border-blue-500 focus:outline-none disabled:opacity-60"
+                className="mt-2 w-full rounded-xl border border-[#19bcd6] bg-[#101a34] px-4 py-3 text-sm text-[#e5e7eb] focus:border-[#27a9e1] focus:outline-none disabled:opacity-60"
                 value={selectedCategory}
                 onChange={(event) => setSelectedCategory(event.target.value)}
                 disabled={disableCategorySelect || !categories.length}
@@ -457,7 +457,7 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
 
             <FilterField label="Round">
               <select
-                className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white focus:border-blue-500 focus:outline-none"
+                className="mt-2 w-full rounded-xl border border-[#19bcd6] bg-[#101a34] px-4 py-3 text-sm text-[#e5e7eb] focus:border-[#27a9e1] focus:outline-none"
                 value={round}
                 onChange={(event) =>
                   setRound(event.target.value as RoundType)
@@ -470,15 +470,15 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-6">
+        <section className="rounded-2xl border border-[#19bcd6] bg-transparent p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full table-fixed text-sm">
+            <table className="min-w-full table-fixed text-sm border-collapse" style={{ border: '1px solid #19bcd6', borderRadius: '12px', overflow: 'hidden' }}>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-neutral-400">
-                  <th className="w-16 pb-3 font-semibold">Rank</th>
-                  <th className="w-64 pb-3 font-semibold">Athlete</th>
-                  <th className="pb-3 font-semibold">Route Scores</th>
-                  <th className="w-20 pb-3 font-semibold text-right">Points</th>
+                <tr className="text-left text-xs uppercase tracking-wider text-[#9ca3af]" style={{ background: 'rgba(255, 255, 255, 0.04)' }}>
+                  <th className="w-16 p-3 font-semibold">Rank</th>
+                  <th className="w-64 p-3 font-semibold">Athlete</th>
+                  <th className="p-3 font-semibold">Route Scores</th>
+                  <th className="w-20 p-3 font-semibold text-right">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -492,7 +492,7 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
             </table>
           </div>
           {leaderboardNote ? (
-            <p className="mt-4 text-sm text-neutral-400 whitespace-pre-line">
+            <p className="mt-4 px-6 pb-4 text-sm text-[#9ca3af] whitespace-pre-line">
               {leaderboardNote}
             </p>
           ) : null}
@@ -504,14 +504,14 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
 
 function LeaderboardFallback() {
   return (
-    <main className="py-12 text-white">
+    <main className="py-12 text-[#e5e7eb]" style={{ background: '#0b1220' }}>
       <Container className="space-y-6">
         <div className="space-y-2">
-          <div className="h-4 w-32 animate-pulse rounded bg-neutral-800" />
-          <div className="h-8 w-72 animate-pulse rounded bg-neutral-800" />
+          <div className="h-4 w-32 animate-pulse rounded bg-[#162246]" />
+          <div className="h-8 w-72 animate-pulse rounded bg-[#162246]" />
         </div>
-        <div className="h-40 animate-pulse rounded-2xl border border-neutral-800 bg-neutral-900/60" />
-        <div className="h-64 animate-pulse rounded-2xl border border-neutral-800 bg-neutral-900/60" />
+        <div className="h-40 animate-pulse rounded-2xl border border-[#19bcd6] bg-[#0e1730]" />
+        <div className="h-64 animate-pulse rounded-2xl border border-[#19bcd6] bg-[#0e1730]" />
       </Container>
     </main>
   );
@@ -519,10 +519,10 @@ function LeaderboardFallback() {
 
 function LeaderboardUnavailable() {
   return (
-    <main className="py-12 text-white">
+    <main className="py-12 text-[#e5e7eb]" style={{ background: '#0b1220' }}>
       <Container className="space-y-4">
         <h1 className="text-3xl font-semibold">Leaderboard unavailable</h1>
-        <p className="text-neutral-400">
+        <p className="text-[#9ca3af]">
           Live results require Firebase configuration. Please verify
           NEXT_PUBLIC_FIREBASE_* variables are set for this deployment.
         </p>
@@ -541,11 +541,11 @@ function FilterField({
   helpText?: string;
 }) {
   return (
-    <label className="block text-sm font-medium text-neutral-200">
+    <label className="block text-sm font-medium text-[#9ca3af]">
       {label}
       {children}
       {helpText ? (
-        <span className="mt-2 block text-xs text-neutral-500">{helpText}</span>
+        <span className="mt-2 block text-xs text-[#9ca3af]">{helpText}</span>
       ) : null}
     </label>
   );
@@ -577,24 +577,28 @@ function renderTableBody({
     return <TableMessage message="No attempts recorded yet." />;
   }
 
-  return rankedRows.map(({ row, rank }) => (
+  return rankedRows.map(({ row, rank }, idx) => (
     <tr
       key={row.athleteId}
-      className="border-t border-neutral-900 text-sm last:border-b"
+      className="text-sm"
+      style={{
+        borderBottom: '1px solid #19bcd6',
+        background: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
+      }}
     >
-      <td className="py-4 font-semibold text-neutral-300">{rank}</td>
-      <td className="py-4">
-        <div className="font-semibold">{row.name}</div>
+      <td className="p-3 font-semibold text-[#e5e7eb]">{rank}</td>
+      <td className="p-3">
+        <div className="font-semibold text-[#e5e7eb]">{row.name}</div>
         {row.team ? (
-          <div className="text-xs uppercase tracking-wide text-neutral-500">
+          <div className="text-xs mt-1 text-[#9ca3af]">
             {row.team}
           </div>
         ) : null}
       </td>
-      <td className="py-4">
+      <td className="p-3">
         <RouteCells routes={row.routes} />
       </td>
-      <td className="py-4 text-right text-base font-semibold">
+      <td className="p-3 text-right text-base font-semibold text-[#e5e7eb]">
         {row.points.toFixed(1)}
       </td>
     </tr>
@@ -604,7 +608,7 @@ function renderTableBody({
 function TableMessage({ message }: { message: string }) {
   return (
     <tr>
-      <td colSpan={4} className="py-10 text-center text-sm text-neutral-400">
+      <td colSpan={4} className="py-10 text-center text-sm text-[#9ca3af]">
         {message}
       </td>
     </tr>
@@ -614,35 +618,56 @@ function TableMessage({ message }: { message: string }) {
 function RouteCells({ routes }: { routes: LeaderboardRow["routes"] }) {
   if (!routes.length) {
     return (
-      <div className="text-sm text-neutral-500">No routes configured yet.</div>
+      <div className="text-sm text-[#9ca3af]">No routes configured yet.</div>
     );
   }
   return (
-    <div className="flex flex-wrap gap-2">
+    <div
+      className="grid gap-1 w-full"
+      style={{
+        gridTemplateColumns: `repeat(${routes.length}, minmax(12px, 1fr))`,
+        minWidth: 0
+      }}
+    >
       {routes.map((route) => {
         const hasTop = route.topAttempt != null;
         const hasZone = route.zoneAttempt != null;
-        const stateClass = hasTop
-          ? "border-emerald-400/70 bg-emerald-500/10"
-          : hasZone
-          ? "border-amber-400/70 bg-amber-500/10"
-          : "border-neutral-800 bg-neutral-900/80";
         const titleParts = [];
         if (route.detailLabel) titleParts.push(route.detailLabel);
         if (hasTop) titleParts.push(`Top @ ${route.topAttempt}`);
         else if (hasZone) titleParts.push(`Zone @ ${route.zoneAttempt}`);
         const title = titleParts.join(" • ");
+
         return (
           <div
             key={route.key}
-            className={`flex h-16 w-16 flex-col items-center justify-between rounded-lg border px-2 py-2 text-center text-xs font-semibold transition ${stateClass}`}
+            className="flex flex-col overflow-hidden rounded-md text-center text-xs font-bold"
+            style={{
+              border: '1px solid #2a3550',
+              height: '32px',
+              minHeight: '32px',
+              minWidth: 0,
+              background: 'rgb(102 100 100 / 42%)',
+              fontFamily: 'Arial'
+            }}
             title={title}
           >
-            <div className="text-lg leading-none">
-              {hasTop ? route.topAttempt : ""}
+            <div
+              className="flex items-center justify-center leading-none flex-1 px-0.5"
+              style={{
+                background: hasTop ? 'rgb(236 0 140)' : 'rgb(102 100 100 / 10%)'
+              }}
+            >
+              {hasTop ? route.topAttempt : ''}
             </div>
-            <div className="text-[11px] uppercase tracking-wide text-neutral-400">
-              {hasZone ? route.zoneAttempt : ""}
+            <div
+              className="flex items-center justify-center leading-none flex-1 px-0.5"
+              style={{
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                background: (hasTop || hasZone) ? 'rgb(0 143 196)' : 'transparent'
+              }}
+            >
+              {hasZone ? route.zoneAttempt : ''}
             </div>
           </div>
         );
