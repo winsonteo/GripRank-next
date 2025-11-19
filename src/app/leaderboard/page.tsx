@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import Container from "@/components/Container";
 import { firestore } from "@/lib/firebase/client";
 import {
@@ -391,14 +393,25 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
   return (
     <main className="py-12 text-foreground bg-background">
       <Container className="space-y-8 mb-8">
-        <header className="space-y-2">
-          <p className="text-sm uppercase tracking-wide text-primary">
-            Live Results
-          </p>
-          <h1 className="text-4xl font-bold">Boulder Leaderboard</h1>
-          <p className="text-base text-muted-foreground">
-            Choose a competition, category, and round to view live standings.
-          </p>
+        <header className="space-y-4">
+          <Link href="/" className="inline-block">
+            <Image
+              src="/logo_header.png"
+              alt="GripRank"
+              width={4001}
+              height={1228}
+              priority
+              className="h-11 w-auto"
+            />
+          </Link>
+          <div className="space-y-2">
+            <p className="text-sm uppercase tracking-wide text-primary">
+              Live Results
+            </p>
+            <p className="text-base text-muted-foreground">
+              Choose a competition, category, and round to view live standings.
+            </p>
+          </div>
         </header>
 
         <section className="rounded-2xl border border-border bg-panel p-6">
