@@ -490,10 +490,10 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
           <table className="w-full text-sm border-collapse border-y border-border">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground" style={{ background: 'rgba(255, 255, 255, 0.04)' }}>
-                <th className="w-12 md:w-16 p-2 md:p-3 font-semibold">Rank</th>
-                <th className="w-32 md:w-64 p-2 md:p-3 font-semibold">Athlete</th>
+                <th className="w-12 p-2 md:p-3 font-semibold">#</th>
+                <th className="w-48 p-2 md:p-3 font-semibold">Athlete</th>
                 <th className="p-2 md:p-3 font-semibold">Route Scores</th>
-                <th className="w-16 md:w-20 p-2 md:p-3 font-semibold text-right">Points</th>
+                <th className="w-16 p-2 md:p-3 font-semibold text-right">Points</th>
               </tr>
             </thead>
             <tbody>
@@ -601,11 +601,11 @@ function renderTableBody({
         background: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
       }}
     >
-      <td className="p-2 md:p-3 font-semibold text-foreground">{rank}</td>
+      <td className="p-2 md:p-3 font-semibold text-foreground text-center">{rank}</td>
       <td className="p-2 md:p-3">
-        <div className="font-semibold text-foreground">{row.name}</div>
+        <div className="font-semibold text-foreground truncate">{row.name}</div>
         {row.team ? (
-          <div className="text-xs mt-1 text-muted-foreground">
+          <div className="text-xs mt-0.5 text-muted-foreground truncate">
             {row.team}
           </div>
         ) : null}
@@ -613,7 +613,7 @@ function renderTableBody({
       <td className="p-2 md:p-3">
         <RouteCells routes={row.routes} />
       </td>
-      <td className="p-2 md:p-3 text-right text-base font-semibold text-foreground">
+      <td className="p-2 md:p-3 text-right font-semibold text-foreground whitespace-nowrap">
         {row.points.toFixed(1)}
       </td>
     </tr>
