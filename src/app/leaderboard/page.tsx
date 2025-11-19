@@ -14,6 +14,7 @@ import {
   where,
   type DocumentData,
   type QuerySnapshot,
+  type Firestore,
 } from "firebase/firestore";
 import {
   buildLeaderboardRows,
@@ -39,14 +40,17 @@ interface BoulderCategory {
 }
 
 export default function LeaderboardPage() {
+  if (!firestore) {
+    return <LeaderboardUnavailable />;
+  }
   return (
     <Suspense fallback={<LeaderboardFallback />}>
-      <LeaderboardContent />
+      <LeaderboardContent firestore={firestore} />
     </Suspense>
   );
 }
 
-function LeaderboardContent() {
+function LeaderboardContent({ firestore }: { firestore: Firestore }) {
   const searchParams = useSearchParams();
   const initialSelectionsRef = useRef({
     compId: searchParams?.get("compId") || null,
@@ -110,7 +114,7 @@ function LeaderboardContent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [firestore]);
 
   useEffect(() => {
     if (!competitions.length) {
@@ -195,7 +199,7 @@ function LeaderboardContent() {
     return () => {
       cancelled = true;
     };
-  }, [selectedComp]);
+  }, [selectedComp, firestore]);
 
   useEffect(() => {
     if (!selectedComp || !selectedCategory) {
@@ -218,7 +222,7 @@ function LeaderboardContent() {
       () => setLeaderboardNote("")
     );
     return () => unsubscribe();
-  }, [selectedComp, selectedCategory]);
+  }, [selectedComp, selectedCategory, firestore]);
 
   useEffect(() => {
     if (!selectedComp || !selectedCategory) {
@@ -367,7 +371,7 @@ function LeaderboardContent() {
       renderTokenRef.current += 1;
       unsubscribe();
     };
-  }, [selectedComp, selectedCategory, round]);
+  }, [selectedComp, selectedCategory, round, firestore]);
 
   const rankedRows = useMemo(() => {
     let prevKey: string | null = null;
@@ -508,6 +512,20 @@ function LeaderboardFallback() {
         </div>
         <div className="h-40 animate-pulse rounded-2xl border border-neutral-800 bg-neutral-900/60" />
         <div className="h-64 animate-pulse rounded-2xl border border-neutral-800 bg-neutral-900/60" />
+      </Container>
+    </main>
+  );
+}
+
+function LeaderboardUnavailable() {
+  return (
+    <main className="py-12 text-white">
+      <Container className="space-y-4">
+        <h1 className="text-3xl font-semibold">Leaderboard unavailable</h1>
+        <p className="text-neutral-400">
+          Live results require Firebase configuration. Please verify
+          NEXT_PUBLIC_FIREBASE_* variables are set for this deployment.
+        </p>
       </Container>
     </main>
   );
