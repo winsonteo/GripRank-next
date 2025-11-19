@@ -638,7 +638,7 @@ function RouteCells({ routes }: { routes: LeaderboardRow["routes"] }) {
   }
   return (
     <div
-      className="flex gap-1 flex-wrap"
+      className="flex gap-1 overflow-x-auto"
       style={{
         minWidth: 0
       }}
