@@ -638,9 +638,8 @@ function RouteCells({ routes }: { routes: LeaderboardRow["routes"] }) {
   }
   return (
     <div
-      className="grid gap-1 w-full"
+      className="flex gap-1 flex-wrap"
       style={{
-        gridTemplateColumns: `repeat(${routes.length}, minmax(12px, 1fr))`,
         minWidth: 0
       }}
     >
@@ -661,7 +660,9 @@ function RouteCells({ routes }: { routes: LeaderboardRow["routes"] }) {
               border: '1px solid #2a3550',
               height: '32px',
               minHeight: '32px',
-              minWidth: 0,
+              width: '40px',
+              minWidth: '32px',
+              maxWidth: '48px',
               background: 'var(--route-empty)',
               fontFamily: 'Arial'
             }}
