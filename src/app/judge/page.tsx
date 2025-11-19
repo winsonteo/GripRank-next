@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
@@ -57,6 +57,8 @@ export default function JudgePage() {
   const [details, setDetails] = useState<RouteDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState("");
+
+  const [contextExpanded, setContextExpanded] = useState(true);
 
   const initialSelectionsRef = useRef({
     usedComp: false,
@@ -229,6 +231,31 @@ export default function JudgePage() {
     }
   };
 
+  // Helper to get selected option label
+  const getSelectedLabel = (items: { id: string; name?: string; label?: string }[], selectedId: string): string => {
+    const item = items.find(i => i.id === selectedId);
+    if (item) {
+      return (item.name || item.label || item.id);
+    }
+    return "";
+  };
+
+  // Generate context summary
+  const contextSummary = useMemo(() => {
+    const compText = selectedComp ? getSelectedLabel(competitions, selectedComp) || "Comp?" : "Comp?";
+    const catText = selectedCategory ? getSelectedLabel(categories, selectedCategory) || "Cat?" : "Cat?";
+    const routeText = selectedRoute ? getSelectedLabel(routes, selectedRoute) || "Route?" : "Route?";
+    const detailText = selectedDetail ? getSelectedLabel(details, selectedDetail) || "Detail?" : "Detail?";
+    const roundText = round === "final" ? "Final" : "Qualification";
+
+    const parts = [compText, catText, roundText, routeText];
+    if (round !== "final") {
+      parts.push(detailText);
+    }
+
+    return parts.join(" • ");
+  }, [selectedComp, selectedCategory, selectedRoute, selectedDetail, round, competitions, categories, routes, details]);
+
   if (!isLoaded || !firestore) {
     return (
       <main className="py-12 text-foreground bg-background min-h-screen">
@@ -267,74 +294,72 @@ export default function JudgePage() {
 
         {/* Judge Station Panel */}
         <section className="rounded-2xl border border-border bg-panel p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-2xl font-bold">Judge Station</h2>
-            <span className="text-sm text-muted-foreground">
-              Select station details
+            <span className="flex-1 text-sm text-muted-foreground min-w-[160px]">
+              {contextSummary}
             </span>
+            <button
+              onClick={() => setContextExpanded(!contextExpanded)}
+              className="px-4 py-2 text-sm rounded-lg border border-border bg-input hover:bg-input/80 transition-colors"
+              aria-expanded={contextExpanded}
+            >
+              {contextExpanded ? "Hide" : "Show"}
+            </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <label className="block text-sm font-medium text-muted-foreground">
-              Competition
-              <select
-                className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
-                value={selectedComp}
-                onChange={(e) => setSelectedComp(e.target.value)}
-                disabled={competitionsLoading}
-              >
-                <option value="">
-                  {competitionsLoading ? "Loading..." : "Select competition"}
-                </option>
-                {competitions.map((comp) => (
-                  <option key={comp.id} value={comp.id}>
-                    {comp.name || comp.id}
+          {contextExpanded && (
+            <div className="grid gap-4 auto-fit-grid">
+              <label className="block text-sm font-medium text-muted-foreground">
+                Competition
+                <select
+                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  value={selectedComp}
+                  onChange={(e) => setSelectedComp(e.target.value)}
+                  disabled={competitionsLoading}
+                >
+                  <option value="">
+                    {competitionsLoading ? "Loading..." : "Select competition"}
                   </option>
-                ))}
-              </select>
-            </label>
+                  {competitions.map((comp) => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name || comp.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="block text-sm font-medium text-muted-foreground">
-              Category
-              <select
-                className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                disabled={!selectedComp || categoriesLoading}
-              >
-                <option value="">
-                  {categoriesLoading ? "Loading..." : "Select category"}
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name || cat.id}
+              <label className="block text-sm font-medium text-muted-foreground">
+                Category
+                <select
+                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  disabled={!selectedComp || categoriesLoading}
+                >
+                  <option value="">
+                    {categoriesLoading ? "Loading..." : "Select category"}
                   </option>
-                ))}
-              </select>
-            </label>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name || cat.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="block text-sm font-medium text-muted-foreground">
-              Round
-              <select
-                className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
-                value={round}
-                onChange={(e) => setRound(e.target.value as RoundType)}
-              >
-                <option value="qualification">Qualification</option>
-                <option value="final">Final</option>
-              </select>
-            </label>
-          </div>
-        </section>
+              <label className="block text-sm font-medium text-muted-foreground">
+                Round
+                <select
+                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                  value={round}
+                  onChange={(e) => setRound(e.target.value as RoundType)}
+                >
+                  <option value="qualification">Qualification</option>
+                  <option value="final">Final</option>
+                </select>
+              </label>
 
-        {/* Route/Detail Selection Panel */}
-        {selectedCategory && (
-          <section className="rounded-2xl border border-border bg-panel p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Route & Detail</h2>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
               <label className="block text-sm font-medium text-muted-foreground">
                 Route
                 <select
@@ -356,34 +381,35 @@ export default function JudgePage() {
 
               <label className="block text-sm font-medium text-muted-foreground">
                 Detail
-                <div className="flex gap-2 mt-2">
-                  <select
-                    className="flex-1 rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
-                    value={selectedDetail}
-                    onChange={(e) => setSelectedDetail(e.target.value)}
-                    disabled={detailsLoading || !details.length}
-                  >
-                    <option value="">
-                      {detailsLoading ? "Loading..." : details.length === 0 ? "No details available" : "Select detail"}
+                <select
+                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  value={selectedDetail}
+                  onChange={(e) => setSelectedDetail(e.target.value)}
+                  disabled={detailsLoading || !details.length}
+                >
+                  <option value="">
+                    {detailsLoading ? "Loading..." : details.length === 0 ? "No details available" : "Select detail"}
+                  </option>
+                  {details.map((detail) => (
+                    <option key={detail.id} value={detail.id}>
+                      {detail.label || detail.detailIndex || detail.id}
                     </option>
-                    {details.map((detail) => (
-                      <option key={detail.id} value={detail.id}>
-                        {detail.label || detail.detailIndex || detail.id}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleNextDetail}
-                    disabled={!details.length || !selectedDetail}
-                    className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
+                  ))}
+                </select>
               </label>
+
+              <div className="flex items-end">
+                <button
+                  onClick={handleNextDetail}
+                  disabled={!details.length || !selectedDetail}
+                  className="w-full px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  Next Detail
+                </button>
+              </div>
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Coming Soon Notice */}
         <section className="rounded-2xl border border-border bg-card p-8 text-center">
@@ -393,6 +419,14 @@ export default function JudgePage() {
           </p>
         </section>
       </Container>
+
+      <style jsx>{`
+        .auto-fit-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          align-items: end;
+        }
+      `}</style>
     </main>
   );
 }
