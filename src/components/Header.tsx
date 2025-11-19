@@ -34,7 +34,7 @@ export default function Header() {
         {/* Nav */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           <Link
-            href="https://griprank.com/boulder/leaderboard"
+            href="/leaderboard"
             className={`${isActive("/leaderboard")} transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md`}
           >
             Results
@@ -59,7 +59,7 @@ export default function Header() {
           asChild
           className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
         >
-          <Link href="https://griprank.com/boulder/leaderboard">Live Results</Link>
+          <Link href="/leaderboard">Live Results</Link>
         </Button>
       </Container>
     </header>

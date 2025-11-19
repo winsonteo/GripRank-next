@@ -29,7 +29,7 @@ export default function HomePage() {
               asChild
               className="mt-8 bg-blue-500 hover:bg-blue-600 text-white text-base px-8 py-4 rounded-2xl shadow-lg shadow-blue-500/20"
             >
-              <Link href="https://griprank.com/boulder/leaderboard">
+              <Link href="/leaderboard">
                 View Competition Results
               </Link>
             </Button>
