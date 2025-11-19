@@ -82,11 +82,12 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
   const renderTokenRef = useRef(0);
 
   useEffect(() => {
+    const db = firestore; // Capture non-null value for TypeScript
     let cancelled = false;
     async function loadCompetitions() {
       setCompetitionsLoading(true);
       try {
-        const snap = await getDocs(collection(firestore, "boulderComps"));
+        const snap = await getDocs(collection(db, "boulderComps"));
         if (cancelled) return;
         const comps: BoulderCompetition[] = snap.docs
           .map((docSnap) => {
@@ -142,12 +143,13 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
       setSelectedCategory("");
       return;
     }
+    const db = firestore; // Capture non-null value for TypeScript
     let cancelled = false;
     async function loadCategories() {
       setCategoriesLoading(true);
       try {
         const snap = await getDocs(
-          collection(firestore, `boulderComps/${selectedComp}/categories`)
+          collection(db, `boulderComps/${selectedComp}/categories`)
         );
         if (cancelled) return;
         const cats: BoulderCategory[] = snap.docs.map((docSnap) => {
@@ -208,8 +210,9 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
       setLeaderboardNote("");
       return;
     }
+    const db = firestore; // Capture non-null value for TypeScript
     const noteRef = doc(
-      firestore,
+      db,
       `boulderComps/${selectedComp}/categories/${selectedCategory}`
     );
     const unsubscribe = onSnapshot(
@@ -233,10 +236,11 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
       setRowsLoading(false);
       return;
     }
+    const db = firestore; // Capture non-null value for TypeScript
     setRowsLoading(true);
     setRowsError(null);
     const attemptsRef = collection(
-      firestore,
+      db,
       `boulderComps/${selectedComp}/attempts`
     );
     const attemptsQuery = query(
@@ -255,19 +259,19 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
           const [athletesSnap, detailSnap, routesSnap] = await Promise.all([
             getDocs(
               query(
-                collection(firestore, `boulderComps/${selectedComp}/athletes`),
+                collection(db, `boulderComps/${selectedComp}/athletes`),
                 where("categoryId", "==", selectedCategory)
               )
             ),
             getDocs(
               collection(
-                firestore,
+                db,
                 `boulderComps/${selectedComp}/categories/${selectedCategory}/details`
               )
             ),
             getDocs(
               collection(
-                firestore,
+                db,
                 `boulderComps/${selectedComp}/categories/${selectedCategory}/${routeCollection}`
               )
             ),

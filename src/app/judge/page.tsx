@@ -68,12 +68,13 @@ export default function JudgePage() {
   // Load competitions on mount
   useEffect(() => {
     if (!firestore) return;
+    const db = firestore; // Capture non-null value for TypeScript
 
     const loadCompetitions = async () => {
       setCompetitionsLoading(true);
       try {
         const q = query(
-          collection(firestore, "competitions"),
+          collection(db, "competitions"),
           where("status", "==", "active"),
           orderBy("updatedAt", "desc")
         );
@@ -106,12 +107,13 @@ export default function JudgePage() {
       setSelectedCategory("");
       return;
     }
+    const db = firestore; // Capture non-null value for TypeScript
 
     const loadCategories = async () => {
       setCategoriesLoading(true);
       try {
         const q = query(
-          collection(firestore, `competitions/${selectedComp}/categories`),
+          collection(db, `competitions/${selectedComp}/categories`),
           orderBy("order", "asc")
         );
         const snapshot = await getDocs(q);
@@ -143,13 +145,14 @@ export default function JudgePage() {
       setSelectedRoute("");
       return;
     }
+    const db = firestore; // Capture non-null value for TypeScript
 
     const loadRoutes = async () => {
       setRoutesLoading(true);
       try {
         const routesPath = `competitions/${selectedComp}/categories/${selectedCategory}/${round}Routes`;
         const q = query(
-          collection(firestore, routesPath),
+          collection(db, routesPath),
           orderBy("order", "asc")
         );
         const snapshot = await getDocs(q);
@@ -181,13 +184,14 @@ export default function JudgePage() {
       setSelectedDetail("");
       return;
     }
+    const db = firestore; // Capture non-null value for TypeScript
 
     const loadDetails = async () => {
       setDetailsLoading(true);
       try {
         const detailsPath = `competitions/${selectedComp}/categories/${selectedCategory}/${round}Routes/${selectedRoute}/details`;
         const q = query(
-          collection(firestore, detailsPath),
+          collection(db, detailsPath),
           orderBy("order", "asc")
         );
         const snapshot = await getDocs(q);
