@@ -10,7 +10,6 @@ import {
   collection,
   getDocs,
   query,
-  where,
   orderBy,
 } from "firebase/firestore";
 
@@ -75,17 +74,30 @@ export default function JudgePage() {
     const loadCompetitions = async () => {
       setCompetitionsLoading(true);
       try {
-        const q = query(
-          collection(db, "competitions"),
-          where("status", "!=", "archived"),
-          orderBy("status", "asc"),
-          orderBy("updatedAt", "desc")
+        const snapshot = await getDocs(collection(db, "boulderComps"));
+        const comps = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((comp: Competition) =>
+            !["archived", "deleted"].includes(
+              (comp.status || "").toString().toLowerCase()
+            )
+          ) as Competition[];
+        comps.sort(
+          (a, b) => {
+            const getTime = (timestamp: unknown): number => {
+              if (!timestamp) return 0;
+              if (typeof timestamp === 'number') return timestamp;
+              if (typeof (timestamp as { toMillis?: () => number }).toMillis === 'function') {
+                return (timestamp as { toMillis: () => number }).toMillis();
+              }
+              return 0;
+            };
+            return getTime(b.updatedAt) - getTime(a.updatedAt);
+          }
         );
-        const snapshot = await getDocs(q);
-        const comps = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Competition[];
         setCompetitions(comps);
 
         // Auto-select first competition if available
@@ -116,7 +128,7 @@ export default function JudgePage() {
       setCategoriesLoading(true);
       try {
         const q = query(
-          collection(db, `competitions/${selectedComp}/categories`),
+          collection(db, `boulderComps/${selectedComp}/categories`),
           orderBy("order", "asc")
         );
         const snapshot = await getDocs(q);
@@ -153,7 +165,8 @@ export default function JudgePage() {
     const loadRoutes = async () => {
       setRoutesLoading(true);
       try {
-        const routesPath = `competitions/${selectedComp}/categories/${selectedCategory}/${round}Routes`;
+        const routeCollection = round === "final" ? "finalRoutes" : "routes";
+        const routesPath = `boulderComps/${selectedComp}/categories/${selectedCategory}/${routeCollection}`;
         const q = query(
           collection(db, routesPath),
           orderBy("order", "asc")
@@ -192,7 +205,7 @@ export default function JudgePage() {
     const loadDetails = async () => {
       setDetailsLoading(true);
       try {
-        const detailsPath = `competitions/${selectedComp}/categories/${selectedCategory}/${round}Routes/${selectedRoute}/details`;
+        const detailsPath = `boulderComps/${selectedComp}/categories/${selectedCategory}/details`;
         const q = query(
           collection(db, detailsPath),
           orderBy("order", "asc")

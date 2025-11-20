@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function userHasRole(roles) {
+      return request.auth != null &&
+             get(/databases/$(db)/documents/roles/$(request.auth.uid)).data.role in roles;
+    }
+    function isAdminOrStaff() { return userHasRole(['staff','admin']); }
+    function isJudge()        { return userHasRole(['judge']); }
+
+    /* ================= BOULDER (boulderComps) ================= */
+    match /boulderComps/{compId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrStaff();
+
+      match /categories/{catId} {
+        allow read: if true;
+        allow write: if isAdminOrStaff();
+
+        match /details/{detailId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+        }
+
+        match /routes/{routeId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+
+          match /details/{detailId} {
+            allow read: if true;
+            allow write: if isAdminOrStaff();
+          }
+        }
+
+        match /finalRoutes/{routeId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+
+          match /details/{detailId} {
+            allow read: if true;
+            allow write: if isAdminOrStaff();
+          }
+        }
+
+        match /qualificationRoutes/{routeId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+
+          match /details/{detailId} {
+            allow read: if true;
+            allow write: if isAdminOrStaff();
+          }
+        }
+      }
+
+      match /athletes/{athleteId} {
+        allow read: if true;
+        allow write: if isAdminOrStaff();
+      }
+
+      match /attempts/{attemptId} {
+        allow read: if true;
+        allow create: if (isJudge() || isAdminOrStaff())
+                      && request.resource.data.compId == compId
+                      && request.resource.data.symbol in ['1','Z','T'];
+        allow update, delete: if isAdminOrStaff();
+      }
+    }
+
+    /* ================= COMPETITIONS (new structure) ================= */
+    match /competitions/{compId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrStaff();
+
+      match /categories/{catId} {
+        allow read: if true;
+        allow write: if isAdminOrStaff();
+
+        match /qualificationRoutes/{routeId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+
+          match /details/{detailId} {
+            allow read: if true;
+            allow write: if isAdminOrStaff();
+          }
+        }
+
+        match /finalRoutes/{routeId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+
+          match /details/{detailId} {
+            allow read: if true;
+            allow write: if isAdminOrStaff();
+          }
+        }
+      }
+
+      match /athletes/{athleteId} {
+        allow read: if true;
+        allow write: if isAdminOrStaff();
+      }
+
+      match /attempts/{attemptId} {
+        allow read: if true;
+        allow create: if (isJudge() || isAdminOrStaff())
+                      && request.resource.data.compId == compId
+                      && request.resource.data.symbol in ['1','Z','T'];
+        allow update, delete: if isAdminOrStaff();
+      }
+    }
+
+    /* ================= ROLES ================= */
+    match /roles/{uid} {
+      allow read: if request.auth != null &&
+                   (request.auth.uid == uid || userHasRole(['admin']));
+      allow write: if userHasRole(['admin']);
+    }
+
+    /* Catch-all deny */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
