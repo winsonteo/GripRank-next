@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import Container from "@/components/Container";
 import { firestore } from "@/lib/firebase/client";
 import {
@@ -17,6 +18,26 @@ import {
   onSnapshot,
   limit,
 } from "firebase/firestore";
+
+// QR Scanner types
+interface BarcodeDetectorResult {
+  rawValue: string;
+}
+
+interface BarcodeDetector {
+  detect(source: HTMLCanvasElement | HTMLVideoElement): Promise<BarcodeDetectorResult[]>;
+}
+
+interface JsQRResult {
+  data: string;
+}
+
+declare global {
+  interface Window {
+    BarcodeDetector?: new (options: { formats: string[] }) => BarcodeDetector;
+    jsQR?: (data: Uint8ClampedArray, width: number, height: number, options: { inversionAttempts: string }) => JsQRResult | null;
+  }
+}
 
 interface Competition {
   id: string;
@@ -100,6 +121,17 @@ export default function JudgePage() {
   const [contextExpanded, setContextExpanded] = useState(true);
   const [rosterExpanded, setRosterExpanded] = useState(true);
   const [attemptsExpanded, setAttemptsExpanded] = useState(true);
+
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
+  const [qrError, setQrError] = useState("");
+  const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<number | null>(null);
+  const qrDetectorRef = useRef<BarcodeDetector | null>(null);
 
   const initialSelectionsRef = useRef({
     usedComp: false,
@@ -410,6 +442,198 @@ export default function JudgePage() {
     }
   };
 
+  const handleOpenQRScanner = async () => {
+    setQrScannerOpen(true);
+    setQrError("");
+    setCameraPermissionDenied(false);
+
+    // Initialize QR detector
+    if (typeof window !== 'undefined' && window.BarcodeDetector) {
+      try {
+        qrDetectorRef.current = new window.BarcodeDetector({ formats: ['qr_code'] });
+      } catch {
+        console.log('BarcodeDetector not available, will use fallback');
+      }
+    }
+
+    // Request camera access
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        startQRScanning();
+      }
+    } catch (error) {
+      console.error('Camera access error:', error);
+      const err = error as { name?: string };
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraPermissionDenied(true);
+        setQrError('Camera permission denied. Please enable camera access in your browser settings.');
+      } else {
+        setQrError('Unable to access camera. Please check your device settings.');
+      }
+    }
+  };
+
+  const handleCloseQRScanner = () => {
+    stopQRScanning();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setQrScannerOpen(false);
+    setQrScanning(false);
+    setQrError("");
+    setCameraPermissionDenied(false);
+  };
+
+  const startQRScanning = () => {
+    setQrScanning(true);
+    scanIntervalRef.current = window.setInterval(() => {
+      scanQRCode();
+    }, 300); // Scan every 300ms
+  };
+
+  const stopQRScanning = () => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    setQrScanning(false);
+  };
+
+  const scanQRCode = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+    const sw = video.videoWidth;
+    const sh = video.videoHeight;
+    if (sw === 0 || sh === 0) return;
+
+    // Downscale to 480px for performance
+    const targetW = Math.min(480, sw);
+    const scale = targetW / sw;
+    const tw = Math.floor(sw * scale);
+    const th = Math.floor(sh * scale);
+
+    canvas.width = tw;
+    canvas.height = th;
+    ctx.drawImage(video, 0, 0, tw, th);
+
+    try {
+      let codes: BarcodeDetectorResult[] = [];
+
+      // Try native BarcodeDetector first
+      if (qrDetectorRef.current) {
+        codes = await qrDetectorRef.current.detect(canvas);
+      }
+      // Fallback to jsQR for iOS Safari
+      else if (typeof window !== 'undefined' && window.jsQR) {
+        const imageData = ctx.getImageData(0, 0, tw, th);
+        const result = window.jsQR(imageData.data, tw, th, {
+          inversionAttempts: 'dontInvert'
+        });
+        if (result) {
+          codes = [{ rawValue: result.data.trim() }];
+        }
+      }
+
+      if (codes.length > 0) {
+        const qrValue = codes[0].rawValue.trim();
+        handleQRCodeDetected(qrValue);
+      }
+    } catch (error) {
+      console.error('QR scan error:', error);
+    }
+  };
+
+  const handleQRCodeDetected = (qrValue: string) => {
+    // QR code format: athleteId or bib number
+    const athlete = athletes.find(a =>
+      a.id === qrValue ||
+      a.bib === qrValue ||
+      `#${a.bib}` === qrValue
+    );
+
+    if (athlete) {
+      handleSelectAthlete(athlete);
+      handleCloseQRScanner();
+      setSaveMessage(`Selected: ${athlete.name || athlete.id}`);
+      setTimeout(() => setSaveMessage(""), 3000);
+    } else {
+      setQrError(`No athlete found with ID or bib: ${qrValue}`);
+      setTimeout(() => setQrError(""), 3000);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !canvasRef.current) return;
+
+    const img = document.createElement('img');
+    img.onload = async () => {
+      const canvas = canvasRef.current!;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const sw = img.width;
+      const sh = img.height;
+
+      // Downscale to 480px for performance
+      const targetW = Math.min(480, sw);
+      const scale = targetW / sw;
+      const tw = Math.floor(sw * scale);
+      const th = Math.floor(sh * scale);
+
+      canvas.width = tw;
+      canvas.height = th;
+      ctx.drawImage(img, 0, 0, tw, th);
+
+      try {
+        let codes: BarcodeDetectorResult[] = [];
+
+        // Try native BarcodeDetector first
+        if (qrDetectorRef.current) {
+          codes = await qrDetectorRef.current.detect(canvas);
+        }
+        // Fallback to jsQR
+        else if (typeof window !== 'undefined' && window.jsQR) {
+          const imageData = ctx.getImageData(0, 0, tw, th);
+          const result = window.jsQR(imageData.data, tw, th, {
+            inversionAttempts: 'dontInvert'
+          });
+          if (result) {
+            codes = [{ rawValue: result.data.trim() }];
+          }
+        }
+
+        if (codes.length > 0) {
+          const qrValue = codes[0].rawValue.trim();
+          handleQRCodeDetected(qrValue);
+        } else {
+          setQrError('No QR code found in image');
+          setTimeout(() => setQrError(""), 3000);
+        }
+      } catch (error) {
+        console.error('Photo QR scan error:', error);
+        setQrError('Error scanning photo');
+        setTimeout(() => setQrError(""), 3000);
+      }
+    };
+
+    img.src = URL.createObjectURL(file);
+  };
+
   const handleSaveAttempt = async () => {
     if (!firestore || !selectedAthlete || !selectedSymbol || !selectedComp || !selectedCategory || !selectedRoute) {
       setSaveMessage("Missing required information");
@@ -528,8 +752,13 @@ export default function JudgePage() {
   }
 
   return (
-    <main className="py-12 text-foreground bg-background min-h-screen">
-      <Container className="space-y-8">
+    <>
+      <Script
+        src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"
+        strategy="afterInteractive"
+      />
+      <main className="py-12 text-foreground bg-background min-h-screen">
+        <Container className="space-y-8">
         {/* Header */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -767,6 +996,17 @@ export default function JudgePage() {
             )}
           </div>
 
+          {/* QR Scanner Button */}
+          <div className="mb-4">
+            <button
+              onClick={handleOpenQRScanner}
+              disabled={!athletes.length}
+              className="w-full py-3 px-4 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              📷 Scan QR Code
+            </button>
+          </div>
+
           {/* Scoring Buttons */}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <button
@@ -939,6 +1179,76 @@ export default function JudgePage() {
             </div>
           )}
         </section>
+
+        {/* QR Scanner Modal */}
+        {qrScannerOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative">
+              <button
+                onClick={handleCloseQRScanner}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 transition-colors text-gray-700 font-bold"
+                aria-label="Close scanner"
+              >
+                ✕
+              </button>
+
+              <h3 className="text-2xl font-bold mb-4 text-gray-900">Scan QR Code</h3>
+
+              {cameraPermissionDenied ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                  <p className="text-red-700 font-semibold mb-2">Camera Permission Denied</p>
+                  <p className="text-red-600 text-sm">
+                    Please enable camera access in your browser settings and reload the page.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Video Preview */}
+                  <div className="relative mb-4 bg-black rounded-xl overflow-hidden aspect-video">
+                    <video
+                      ref={videoRef}
+                      className="w-full h-full object-cover"
+                      playsInline
+                      muted
+                    />
+                    {qrScanning && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="border-4 border-blue-500 rounded-lg w-48 h-48 animate-pulse"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hidden canvas for processing */}
+                  <canvas ref={canvasRef} className="hidden" />
+
+                  {/* Error Message */}
+                  {qrError && (
+                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+                      {qrError}
+                    </div>
+                  )}
+
+                  {/* Photo Upload Fallback */}
+                  <div className="border-t border-gray-200 pt-4">
+                    <label className="block">
+                      <span className="text-sm text-gray-600 mb-2 block">Or upload a photo:</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-4">
+                    Position the QR code within the frame. The scanner will automatically detect and select the athlete.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </Container>
 
       <style jsx>{`
@@ -948,6 +1258,7 @@ export default function JudgePage() {
           align-items: end;
         }
       `}</style>
-    </main>
+      </main>
+    </>
   );
 }
