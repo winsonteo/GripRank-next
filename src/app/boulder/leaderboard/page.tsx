@@ -32,6 +32,7 @@ interface BoulderCompetition {
   name?: string;
   status?: string;
   updatedAt?: unknown;
+  isDemo?: boolean;
 }
 
 interface BoulderCategory {
@@ -98,7 +99,7 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
             (comp) =>
               !["archived", "deleted"].includes(
                 (comp.status || "").toString().toLowerCase()
-              )
+              ) && !comp.isDemo // Exclude demo competitions from leaderboard
           );
         comps.sort(
           (a, b) => timestampValue(b.updatedAt) - timestampValue(a.updatedAt)

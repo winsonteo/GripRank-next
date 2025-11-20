@@ -525,7 +525,7 @@ export default function JudgePage() {
               <label className="block text-sm font-medium text-muted-foreground">
                 Competition
                 <select
-                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedComp}
                   onChange={(e) => setSelectedComp(e.target.value)}
                   disabled={competitionsLoading}
@@ -544,7 +544,7 @@ export default function JudgePage() {
               <label className="block text-sm font-medium text-muted-foreground">
                 Category
                 <select
-                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   disabled={!selectedComp || categoriesLoading}
@@ -563,7 +563,7 @@ export default function JudgePage() {
               <label className="block text-sm font-medium text-muted-foreground">
                 Round
                 <select
-                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
                   value={round}
                   onChange={(e) => setRound(e.target.value as RoundType)}
                 >
@@ -575,7 +575,7 @@ export default function JudgePage() {
               <label className="block text-sm font-medium text-muted-foreground">
                 Route
                 <select
-                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedRoute}
                   onChange={(e) => setSelectedRoute(e.target.value)}
                   disabled={routesLoading || !routes.length}
@@ -594,7 +594,7 @@ export default function JudgePage() {
               <label className="block text-sm font-medium text-muted-foreground">
                 Detail
                 <select
-                  className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedDetail}
                   onChange={(e) => setSelectedDetail(e.target.value)}
                   disabled={detailsLoading || !details.length}
@@ -662,7 +662,7 @@ export default function JudgePage() {
           )}
 
           {rosterExpanded && (
-            <div className="min-h-[100px]">
+            <div className="min-h-[100px] max-h-[260px] overflow-y-auto">
               {athletesLoading ? (
                 <div className="text-muted-foreground text-center py-8">
                   Loading athletes...
@@ -726,7 +726,7 @@ export default function JudgePage() {
               className={`py-8 rounded-xl font-bold text-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 selectedSymbol === "1"
                   ? "bg-red-500 text-white border-red-600 shadow-lg scale-105"
-                  : "bg-input border-border hover:border-red-500 hover:bg-red-50"
+                  : "bg-input border-border"
               }`}
             >
               1
@@ -737,7 +737,7 @@ export default function JudgePage() {
               className={`py-8 rounded-xl font-bold text-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 selectedSymbol === "Z"
                   ? "bg-yellow-500 text-white border-yellow-600 shadow-lg scale-105"
-                  : "bg-input border-border hover:border-yellow-500 hover:bg-yellow-50"
+                  : "bg-input border-border"
               }`}
             >
               Zone
@@ -748,7 +748,7 @@ export default function JudgePage() {
               className={`py-8 rounded-xl font-bold text-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 selectedSymbol === "T"
                   ? "bg-green-500 text-white border-green-600 shadow-lg scale-105"
-                  : "bg-input border-border hover:border-green-500 hover:bg-green-50"
+                  : "bg-input border-border"
               }`}
             >
               Top
