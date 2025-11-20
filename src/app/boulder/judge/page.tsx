@@ -11,6 +11,7 @@ import {
   getDocs,
   query,
   orderBy,
+  where,
 } from "firebase/firestore";
 
 interface Competition {
@@ -32,6 +33,17 @@ interface RouteDetail {
   label?: string;
   order?: number;
   detailIndex?: string;
+}
+
+interface Athlete {
+  id: string;
+  bib?: string;
+  name?: string;
+  team?: string;
+  categoryId?: string;
+  detailIndex?: string;
+  detail?: string;
+  detailId?: string;
 }
 
 type RoundType = "qualification" | "final";
@@ -57,7 +69,12 @@ export default function JudgePage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState("");
 
+  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [athletesLoading, setAthletesLoading] = useState(false);
+  const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
+
   const [contextExpanded, setContextExpanded] = useState(true);
+  const [rosterExpanded, setRosterExpanded] = useState(true);
 
   const initialSelectionsRef = useRef({
     usedComp: false,
@@ -232,6 +249,58 @@ export default function JudgePage() {
     loadDetails();
   }, [selectedComp, selectedCategory, selectedRoute, round]);
 
+  // Load athletes when category and detail change
+  useEffect(() => {
+    if (!firestore || !selectedComp || !selectedCategory) {
+      setAthletes([]);
+      setSelectedAthlete(null);
+      return;
+    }
+    const db = firestore; // Capture non-null value for TypeScript
+
+    const loadAthletes = async () => {
+      setAthletesLoading(true);
+      try {
+        const athletesPath = `boulderComps/${selectedComp}/athletes`;
+        const q = query(
+          collection(db, athletesPath),
+          where("categoryId", "==", selectedCategory)
+        );
+        const snapshot = await getDocs(q);
+        let allAthletes = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Athlete[];
+
+        // For qualification rounds, filter by detail
+        if (round === "qualification" && selectedDetail) {
+          const selectedDetailObj = details.find(d => d.id === selectedDetail);
+          const detailIndexToMatch = selectedDetailObj?.detailIndex || selectedDetailObj?.id || selectedDetail;
+
+          allAthletes = allAthletes.filter((athlete) => {
+            const athleteDetail = athlete.detailIndex || athlete.detail || athlete.detailId;
+            return athleteDetail && String(athleteDetail) === String(detailIndexToMatch);
+          });
+        }
+
+        // Sort by bib number
+        allAthletes.sort((a, b) => {
+          const bibA = a.bib ? parseInt(a.bib, 10) : Number.MAX_SAFE_INTEGER;
+          const bibB = b.bib ? parseInt(b.bib, 10) : Number.MAX_SAFE_INTEGER;
+          return bibA - bibB;
+        });
+
+        setAthletes(allAthletes);
+      } catch (error) {
+        console.error("Error loading athletes:", error);
+      } finally {
+        setAthletesLoading(false);
+      }
+    };
+
+    loadAthletes();
+  }, [selectedComp, selectedCategory, selectedDetail, round, details]);
+
   const handleNextDetail = () => {
     if (!details.length) return;
 
@@ -242,6 +311,32 @@ export default function JudgePage() {
     } else {
       // Move to next
       setSelectedDetail(details[currentIndex + 1].id);
+    }
+  };
+
+  const handleSelectAthlete = (athlete: Athlete) => {
+    setSelectedAthlete(athlete);
+  };
+
+  const handlePrevFinalist = () => {
+    if (!athletes.length || !selectedAthlete) return;
+    const currentIndex = athletes.findIndex((a) => a.id === selectedAthlete.id);
+    if (currentIndex <= 0) {
+      // At start, wrap to last
+      setSelectedAthlete(athletes[athletes.length - 1]);
+    } else {
+      setSelectedAthlete(athletes[currentIndex - 1]);
+    }
+  };
+
+  const handleNextFinalist = () => {
+    if (!athletes.length || !selectedAthlete) return;
+    const currentIndex = athletes.findIndex((a) => a.id === selectedAthlete.id);
+    if (currentIndex === -1 || currentIndex === athletes.length - 1) {
+      // At end, wrap to first
+      setSelectedAthlete(athletes[0]);
+    } else {
+      setSelectedAthlete(athletes[currentIndex + 1]);
     }
   };
 
@@ -425,12 +520,91 @@ export default function JudgePage() {
           )}
         </section>
 
+        {/* Detail Roster Panel */}
+        <section className="rounded-2xl border border-border bg-panel p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Detail Roster</h2>
+            <button
+              onClick={() => setRosterExpanded(!rosterExpanded)}
+              className="px-4 py-2 text-sm rounded-lg border border-border bg-input hover:bg-input/80 transition-colors"
+              aria-expanded={rosterExpanded}
+            >
+              {rosterExpanded ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {/* Finals Navigation Tools (only for final rounds) */}
+          {round === "final" && rosterExpanded && athletes.length > 0 && (
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={handlePrevFinalist}
+                disabled={!selectedAthlete}
+                className="px-4 py-2 text-sm rounded-lg border border-border bg-input hover:bg-input/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev Finalist
+              </button>
+              <button
+                onClick={handleNextFinalist}
+                disabled={!selectedAthlete}
+                className="px-4 py-2 text-sm rounded-lg border border-border bg-input hover:bg-input/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next Finalist
+              </button>
+              {selectedAthlete && (
+                <span className="text-sm text-muted-foreground">
+                  {athletes.findIndex(a => a.id === selectedAthlete.id) + 1} of {athletes.length}
+                </span>
+              )}
+            </div>
+          )}
+
+          {rosterExpanded && (
+            <div className="min-h-[100px]">
+              {athletesLoading ? (
+                <div className="text-muted-foreground text-center py-8">
+                  Loading athletes...
+                </div>
+              ) : !selectedDetail ? (
+                <div className="text-muted-foreground text-center py-8">
+                  Select a detail to view athletes.
+                </div>
+              ) : athletes.length === 0 ? (
+                <div className="text-muted-foreground text-center py-8">
+                  No athletes found for this detail.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {athletes.map((athlete) => (
+                    <button
+                      key={athlete.id}
+                      onClick={() => handleSelectAthlete(athlete)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        selectedAthlete?.id === athlete.id
+                          ? "bg-primary text-white border-primary"
+                          : "bg-input border-border hover:bg-input/80"
+                      }`}
+                    >
+                      {athlete.bib && <span className="font-bold">#{athlete.bib} </span>}
+                      {athlete.name || athlete.id}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* Coming Soon Notice */}
         <section className="rounded-2xl border border-border bg-card p-8 text-center">
-          <h3 className="text-xl font-semibold mb-2">Judge Console</h3>
+          <h3 className="text-xl font-semibold mb-2">Record Attempt</h3>
           <p className="text-muted-foreground">
-            Full judge functionality coming soon...
+            Scoring interface coming in Phase 3...
           </p>
+          {selectedAthlete && (
+            <p className="mt-4 text-foreground">
+              Selected: <span className="font-semibold">{selectedAthlete.bib ? `#${selectedAthlete.bib} ` : ''}{selectedAthlete.name || selectedAthlete.id}</span>
+            </p>
+          )}
         </section>
       </Container>
 
