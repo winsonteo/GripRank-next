@@ -14,6 +14,8 @@ import {
   where,
   addDoc,
   serverTimestamp,
+  onSnapshot,
+  limit,
 } from "firebase/firestore";
 
 interface Competition {
@@ -46,6 +48,15 @@ interface Athlete {
   detailIndex?: string;
   detail?: string;
   detailId?: string;
+}
+
+interface AttemptRecord {
+  id: string;
+  athleteId: string;
+  symbol: string;
+  clientAt?: unknown;
+  clientAtMs?: number;
+  enteredBy?: string;
 }
 
 type RoundType = "qualification" | "final";
@@ -84,8 +95,11 @@ export default function JudgePage() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerDisplay, setTimerDisplay] = useState("01:00");
 
+  const [attempts, setAttempts] = useState<AttemptRecord[]>([]);
+
   const [contextExpanded, setContextExpanded] = useState(true);
   const [rosterExpanded, setRosterExpanded] = useState(true);
+  const [attemptsExpanded, setAttemptsExpanded] = useState(true);
 
   const initialSelectionsRef = useRef({
     usedComp: false,
@@ -311,6 +325,41 @@ export default function JudgePage() {
 
     loadAthletes();
   }, [selectedComp, selectedCategory, selectedDetail, round, details]);
+
+  // Load attempts with real-time updates
+  useEffect(() => {
+    if (!firestore || !selectedComp || !selectedRoute) {
+      setAttempts([]);
+      return;
+    }
+    const db = firestore;
+
+    const attemptsPath = `boulderComps/${selectedComp}/attempts`;
+    const q = query(
+      collection(db, attemptsPath),
+      where("routeId", "==", selectedRoute),
+      where("round", "==", round),
+      orderBy("clientAtMs", "desc"),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const attemptsList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as AttemptRecord[];
+        setAttempts(attemptsList);
+      },
+      (error) => {
+        console.error("Error loading attempts:", error);
+        setAttempts([]);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [selectedComp, selectedRoute, round]);
 
   const handleNextDetail = () => {
     if (!details.length) return;
@@ -821,6 +870,74 @@ export default function JudgePage() {
             {selectedAthlete && selectedSymbol && `Ready to save: ${selectedSymbol} for ${selectedAthlete.name || selectedAthlete.id}`}
             {!selectedAthlete && "Select an athlete to begin judging"}
           </div>
+        </section>
+        {/* Judge List Panel - Attempt History */}
+        <section className="rounded-2xl border border-border bg-panel p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Judge List</h2>
+            <button
+              onClick={() => setAttemptsExpanded(!attemptsExpanded)}
+              className="px-4 py-2 text-sm rounded-lg border border-border bg-input hover:bg-input/80 transition-colors"
+              aria-expanded={attemptsExpanded}
+            >
+              {attemptsExpanded ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {attemptsExpanded && (
+            <div className="min-h-[100px] max-h-[300px] overflow-y-auto">
+              {!selectedRoute ? (
+                <div className="text-muted-foreground text-center py-8">
+                  Select a route to view attempts.
+                </div>
+              ) : attempts.length === 0 ? (
+                <div className="text-muted-foreground text-center py-8">
+                  No attempts recorded yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-border">
+                      <tr className="text-left">
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Athlete</th>
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Symbol</th>
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attempts.map((attempt) => {
+                        const athlete = athletes.find(a => a.id === attempt.athleteId);
+                        const timestamp = attempt.clientAtMs
+                          ? new Date(attempt.clientAtMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                          : '-';
+
+                        return (
+                          <tr key={attempt.id} className="border-b border-border hover:bg-input/50">
+                            <td className="py-2 px-3">
+                              {athlete?.bib && <span className="font-semibold">#{athlete.bib} </span>}
+                              {athlete?.name || attempt.athleteId}
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                attempt.symbol === 'T' ? 'bg-green-500 text-white' :
+                                attempt.symbol === 'Z' ? 'bg-yellow-500 text-white' :
+                                'bg-red-500 text-white'
+                              }`}>
+                                {attempt.symbol}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-muted-foreground text-xs">
+                              {timestamp}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       </Container>
 
