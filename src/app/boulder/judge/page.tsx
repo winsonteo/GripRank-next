@@ -578,7 +578,7 @@ export default function JudgePage() {
                     <button
                       key={athlete.id}
                       onClick={() => handleSelectAthlete(athlete)}
-                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${
                         selectedAthlete?.id === athlete.id
                           ? "bg-primary text-white border-primary"
                           : "bg-input border-border hover:bg-input/80"
