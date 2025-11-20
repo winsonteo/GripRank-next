@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: "/results",
-        destination: "/leaderboard",
+        destination: "/boulder/leaderboard",
         permanent: true, // tells browsers & search engines it's a stable redirect (HTTP 308)
       },
     ];
