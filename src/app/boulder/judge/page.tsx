@@ -12,6 +12,8 @@ import {
   query,
   orderBy,
   where,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 interface Competition {
@@ -72,6 +74,15 @@ export default function JudgePage() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [athletesLoading, setAthletesLoading] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
+  const [lastAthlete, setLastAthlete] = useState<Athlete | null>(null);
+
+  const [selectedSymbol, setSelectedSymbol] = useState<"1" | "Z" | "T" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+
+  const [timerSeconds, setTimerSeconds] = useState(60);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerDisplay, setTimerDisplay] = useState("01:00");
 
   const [contextExpanded, setContextExpanded] = useState(true);
   const [rosterExpanded, setRosterExpanded] = useState(true);
@@ -316,6 +327,8 @@ export default function JudgePage() {
 
   const handleSelectAthlete = (athlete: Athlete) => {
     setSelectedAthlete(athlete);
+    setSelectedSymbol(null); // Reset symbol when selecting new athlete
+    setSaveMessage("");
   };
 
   const handlePrevFinalist = () => {
@@ -339,6 +352,96 @@ export default function JudgePage() {
       setSelectedAthlete(athletes[currentIndex + 1]);
     }
   };
+
+  const handleBackToLastAthlete = () => {
+    if (lastAthlete) {
+      setSelectedAthlete(lastAthlete);
+      setSelectedSymbol(null);
+      setSaveMessage("");
+    }
+  };
+
+  const handleSaveAttempt = async () => {
+    if (!firestore || !selectedAthlete || !selectedSymbol || !selectedComp || !selectedCategory || !selectedRoute) {
+      setSaveMessage("Missing required information");
+      return;
+    }
+
+    setSaving(true);
+    setSaveMessage("");
+
+    try {
+      const db = firestore;
+      const attemptsPath = `boulderComps/${selectedComp}/attempts`;
+
+      // Get detail index for qualification rounds
+      const selectedDetailObj = details.find(d => d.id === selectedDetail);
+      const detailIndex = selectedDetailObj?.detailIndex || selectedDetailObj?.id || selectedDetail;
+
+      const attemptData = {
+        compId: selectedComp,
+        categoryId: selectedCategory,
+        athleteId: selectedAthlete.id,
+        routeId: selectedRoute,
+        problemId: selectedRoute, // alias for routeId
+        round,
+        detailIndex: round === "qualification" ? detailIndex : undefined,
+        symbol: selectedSymbol,
+        stationId: `station_${selectedRoute}`,
+        enteredBy: user?.id || null,
+        clientAt: serverTimestamp(),
+        clientAtMs: Date.now(),
+        offline: false,
+      };
+
+      await addDoc(collection(db, attemptsPath), attemptData);
+
+      // Success feedback
+      setSaveMessage(`Saved: ${selectedSymbol} for ${selectedAthlete.name || selectedAthlete.id}`);
+      setLastAthlete(selectedAthlete);
+      setSelectedSymbol(null);
+
+      // Auto-clear message after 3 seconds
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (error) {
+      console.error("Error saving attempt:", error);
+      setSaveMessage("Error saving attempt. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartTimer = () => {
+    setTimerRunning(true);
+  };
+
+  const handleStopTimer = () => {
+    setTimerRunning(false);
+  };
+
+  // Timer effect
+  useEffect(() => {
+    if (!timerRunning) return;
+
+    const interval = setInterval(() => {
+      setTimerSeconds((prev) => {
+        if (prev <= 1) {
+          setTimerRunning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerRunning]);
+
+  // Update timer display
+  useEffect(() => {
+    const minutes = Math.floor(timerSeconds / 60);
+    const seconds = timerSeconds % 60;
+    setTimerDisplay(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+  }, [timerSeconds]);
 
   // Helper to get selected option label
   const getSelectedLabel = (items: { id: string; name?: string; label?: string }[], selectedId: string): string => {
@@ -594,17 +697,130 @@ export default function JudgePage() {
           )}
         </section>
 
-        {/* Coming Soon Notice */}
-        <section className="rounded-2xl border border-border bg-card p-8 text-center">
-          <h3 className="text-xl font-semibold mb-2">Record Attempt</h3>
-          <p className="text-muted-foreground">
-            Scoring interface coming in Phase 3...
-          </p>
-          {selectedAthlete && (
-            <p className="mt-4 text-foreground">
-              Selected: <span className="font-semibold">{selectedAthlete.bib ? `#${selectedAthlete.bib} ` : ''}{selectedAthlete.name || selectedAthlete.id}</span>
-            </p>
-          )}
+        {/* Record Attempt Panel */}
+        <section className="rounded-2xl border border-border bg-panel p-6">
+          <h2 className="text-2xl font-bold mb-4">Record Attempt</h2>
+
+          {/* Attempt Context */}
+          <div className={`mb-4 p-4 rounded-xl border transition-all ${
+            selectedAthlete
+              ? "bg-white text-gray-900 border-transparent shadow-lg"
+              : "bg-input/30 text-muted-foreground border-border"
+          }`}>
+            {selectedAthlete ? (
+              <div className="text-lg font-semibold">
+                {selectedAthlete.bib && <span className="font-bold">#{selectedAthlete.bib} </span>}
+                {selectedAthlete.name || selectedAthlete.id}
+                {selectedAthlete.team && <span className="text-sm font-normal ml-2">({selectedAthlete.team})</span>}
+              </div>
+            ) : (
+              <div>No athlete selected.</div>
+            )}
+          </div>
+
+          {/* Scoring Buttons */}
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <button
+              onClick={() => setSelectedSymbol("1")}
+              disabled={!selectedAthlete}
+              className={`py-8 rounded-xl font-bold text-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                selectedSymbol === "1"
+                  ? "bg-red-500 text-white border-red-600 shadow-lg scale-105"
+                  : "bg-input border-border hover:border-red-500 hover:bg-red-50"
+              }`}
+            >
+              1
+            </button>
+            <button
+              onClick={() => setSelectedSymbol("Z")}
+              disabled={!selectedAthlete}
+              className={`py-8 rounded-xl font-bold text-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                selectedSymbol === "Z"
+                  ? "bg-yellow-500 text-white border-yellow-600 shadow-lg scale-105"
+                  : "bg-input border-border hover:border-yellow-500 hover:bg-yellow-50"
+              }`}
+            >
+              Zone
+            </button>
+            <button
+              onClick={() => setSelectedSymbol("T")}
+              disabled={!selectedAthlete}
+              className={`py-8 rounded-xl font-bold text-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                selectedSymbol === "T"
+                  ? "bg-green-500 text-white border-green-600 shadow-lg scale-105"
+                  : "bg-input border-border hover:border-green-500 hover:bg-green-50"
+              }`}
+            >
+              Top
+            </button>
+          </div>
+
+          {/* Save and Timer Row */}
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <button
+                onClick={handleSaveAttempt}
+                disabled={!selectedAthlete || !selectedSymbol || saving}
+                className="w-full py-4 bg-primary text-white rounded-xl font-semibold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+              {saveMessage && (
+                <div className={`mt-2 text-sm text-center ${saveMessage.includes("Error") ? "text-red-500" : "text-green-500"}`}>
+                  {saveMessage}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleBackToLastAthlete}
+              disabled={!lastAthlete}
+              className="px-6 py-4 rounded-xl border-2 border-border bg-input hover:bg-input/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              Back to last athlete
+            </button>
+          </div>
+
+          {/* Timer Controls */}
+          <div className="rounded-xl border border-border bg-input/30 p-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                Timer (seconds)
+                <input
+                  type="number"
+                  min="5"
+                  value={timerSeconds}
+                  onChange={(e) => setTimerSeconds(parseInt(e.target.value) || 60)}
+                  disabled={timerRunning}
+                  className="w-20 px-3 py-2 rounded-lg border border-border bg-input text-foreground disabled:opacity-50"
+                />
+              </label>
+              <button
+                onClick={handleStartTimer}
+                disabled={timerRunning}
+                className="px-4 py-2 rounded-lg border border-border bg-input hover:bg-input/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                Start
+              </button>
+              <button
+                onClick={handleStopTimer}
+                disabled={!timerRunning}
+                className="px-4 py-2 rounded-lg border border-border bg-input hover:bg-input/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                Stop
+              </button>
+              <div className={`text-3xl font-bold tabular-nums ${timerRunning ? "text-primary" : "text-muted-foreground"}`}>
+                {timerDisplay}
+              </div>
+            </div>
+          </div>
+
+          {/* Next Attempt Log */}
+          <div className="mt-4 p-3 rounded-lg bg-input/30 border border-border text-sm text-muted-foreground">
+            {selectedAthlete && !selectedSymbol && "Next Attempt: (choose 1 / Z / T, then Save)"}
+            {selectedAthlete && selectedSymbol && `Ready to save: ${selectedSymbol} for ${selectedAthlete.name || selectedAthlete.id}`}
+            {!selectedAthlete && "Select an athlete to begin judging"}
+          </div>
         </section>
       </Container>
 
