@@ -77,7 +77,8 @@ export default function JudgePage() {
       try {
         const q = query(
           collection(db, "competitions"),
-          where("status", "==", "active"),
+          where("status", "!=", "archived"),
+          orderBy("status", "asc"),
           orderBy("updatedAt", "desc")
         );
         const snapshot = await getDocs(q);
