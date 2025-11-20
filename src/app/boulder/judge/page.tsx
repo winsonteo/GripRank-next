@@ -576,64 +576,6 @@ export default function JudgePage() {
     }
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !canvasRef.current) return;
-
-    const img = document.createElement('img');
-    img.onload = async () => {
-      const canvas = canvasRef.current!;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const sw = img.width;
-      const sh = img.height;
-
-      // Downscale to 480px for performance
-      const targetW = Math.min(480, sw);
-      const scale = targetW / sw;
-      const tw = Math.floor(sw * scale);
-      const th = Math.floor(sh * scale);
-
-      canvas.width = tw;
-      canvas.height = th;
-      ctx.drawImage(img, 0, 0, tw, th);
-
-      try {
-        let codes: BarcodeDetectorResult[] = [];
-
-        // Try native BarcodeDetector first
-        if (qrDetectorRef.current) {
-          codes = await qrDetectorRef.current.detect(canvas);
-        }
-        // Fallback to jsQR
-        else if (typeof window !== 'undefined' && window.jsQR) {
-          const imageData = ctx.getImageData(0, 0, tw, th);
-          const result = window.jsQR(imageData.data, tw, th, {
-            inversionAttempts: 'dontInvert'
-          });
-          if (result) {
-            codes = [{ rawValue: result.data.trim() }];
-          }
-        }
-
-        if (codes.length > 0) {
-          const qrValue = codes[0].rawValue.trim();
-          handleQRCodeDetected(qrValue);
-        } else {
-          setQrError('No QR code found in image');
-          setTimeout(() => setQrError(""), 3000);
-        }
-      } catch (error) {
-        console.error('Photo QR scan error:', error);
-        setQrError('Error scanning photo');
-        setTimeout(() => setQrError(""), 3000);
-      }
-    };
-
-    img.src = URL.createObjectURL(file);
-  };
-
   const handleSaveAttempt = async () => {
     if (!firestore || !selectedAthlete || !selectedSymbol || !selectedComp || !selectedCategory || !selectedRoute) {
       setSaveMessage("Missing required information");
@@ -1227,19 +1169,6 @@ export default function JudgePage() {
                       {qrError}
                     </div>
                   )}
-
-                  {/* Photo Upload Fallback */}
-                  <div className="border-t border-gray-200 pt-4">
-                    <label className="block">
-                      <span className="text-sm text-gray-600 mb-2 block">Or upload a photo:</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                      />
-                    </label>
-                  </div>
 
                   <p className="text-xs text-gray-500 mt-4">
                     Position the QR code within the frame. The scanner will automatically detect and select the athlete.
