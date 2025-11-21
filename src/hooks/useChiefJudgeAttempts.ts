@@ -12,6 +12,26 @@ import {
 } from 'firebase/firestore';
 
 /**
+ * Normalize detailIndex to number for consistent Firestore queries and writes.
+ *
+ * RATIONALE:
+ * - Legacy data stores detailIndex as number
+ * - UI/URLs may provide strings
+ * - Firestore queries must use the same type as stored data
+ *
+ * @param detailIndex - String or number from UI/state
+ * @returns number if parseable, undefined if empty/invalid
+ */
+export function normalizeDetailIndex(detailIndex: string | number | undefined): number | undefined {
+  if (detailIndex === undefined || detailIndex === null || detailIndex === '') {
+    return undefined;
+  }
+
+  const parsed = typeof detailIndex === 'number' ? detailIndex : Number(detailIndex);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+/**
  * Athlete with attempt sequence
  * Used by Chief Judge to display aggregated attempts per athlete
  */
@@ -94,21 +114,52 @@ export function useChiefJudgeAttempts(
       return;
     }
 
-    let unsubscribeAttempts: (() => void) | null = null;
+    // CRITICAL: Track if this effect is still active
+    // Prevents stale updates from old subscriptions
+    let isActive = true;
+    let unsubscribe: (() => void) | undefined;
 
-    async function fetchData() {
-      try {
-        // Step 1: Fetch athletes in this category/detail
-        const athletesRef = collection(firestore!, `boulderComps/${compId}/athletes`);
-        const athleteFilters = [where('categoryId', '==', categoryId)];
+    // Normalize detailIndex once for this effect
+    const normalizedDetailIndex = normalizeDetailIndex(detailIndex);
 
-        // For qualification rounds, filter by detailIndex
-        if (round === 'qualification' && detailIndex) {
-          athleteFilters.push(where('detailIndex', '==', detailIndex));
-        }
+    // Step 1: Build athletes query and fetch once
+    const athletesRef = collection(firestore!, `boulderComps/${compId}/athletes`);
+    const athleteFilters = [where('categoryId', '==', categoryId)];
 
-        const athletesQuery = query(athletesRef, ...athleteFilters);
-        const athletesSnapshot = await getDocs(athletesQuery);
+    // For qualification rounds, filter by detailIndex (normalized to number)
+    if (round === 'qualification' && normalizedDetailIndex !== undefined) {
+      athleteFilters.push(where('detailIndex', '==', normalizedDetailIndex));
+    }
+
+    const athletesQuery = query(athletesRef, ...athleteFilters);
+
+    // Step 2: Build attempts query for real-time updates
+    const attemptsRef = collection(firestore!, `boulderComps/${compId}/attempts`);
+    const attemptFilters = [
+      where('categoryId', '==', categoryId),
+      where('round', '==', round),
+    ];
+
+    // Add routeId filter only if a specific route is selected
+    if (routeId) {
+      attemptFilters.push(where('routeId', '==', routeId));
+    }
+
+    // For qualification rounds, filter by detailIndex (normalized to number)
+    if (round === 'qualification' && normalizedDetailIndex !== undefined) {
+      attemptFilters.push(where('detailIndex', '==', normalizedDetailIndex));
+    }
+
+    const attemptsQuery = query(
+      attemptsRef,
+      ...attemptFilters,
+      orderBy('clientAtMs', 'desc')  // Changed to DESC to match existing index
+    );
+
+    // Fetch athletes once, then set up listener
+    getDocs(athletesQuery)
+      .then((athletesSnapshot) => {
+        if (!isActive) return; // Effect already cleaned up
 
         const athletesMap = new Map<string, AthleteRecord>();
         athletesSnapshot.forEach((doc) => {
@@ -118,33 +169,12 @@ export function useChiefJudgeAttempts(
           } as AthleteRecord);
         });
 
-        // Step 2: Subscribe to attempts for this route/round
-        const attemptsRef = collection(firestore!, `boulderComps/${compId}/attempts`);
-        const attemptFilters = [
-          where('categoryId', '==', categoryId),
-          where('round', '==', round),
-        ];
-
-        // Add routeId filter only if a specific route is selected
-        if (routeId) {
-          attemptFilters.push(where('routeId', '==', routeId));
-        }
-
-        // For qualification rounds, filter by detailIndex
-        if (round === 'qualification' && detailIndex) {
-          attemptFilters.push(where('detailIndex', '==', detailIndex));
-        }
-
-        const attemptsQuery = query(
-          attemptsRef,
-          ...attemptFilters,
-          orderBy('clientAtMs', 'desc')  // Changed to DESC to match existing index
-        );
-
-        // Subscribe to real-time updates
-        unsubscribeAttempts = onSnapshot(
+        // Subscribe to real-time attempt updates
+        // This must happen AFTER athletes are loaded but INSIDE the promise
+        unsubscribe = onSnapshot(
           attemptsQuery,
           (snapshot) => {
+            if (!isActive) return; // Ignore if effect cleaned up
             // Aggregate attempts by athlete (and route if showing all routes)
             const attemptsByAthlete = new Map<string, string[]>();
 
@@ -211,25 +241,25 @@ export function useChiefJudgeAttempts(
             setLoading(false);
           },
           (err) => {
+            if (!isActive) return; // Ignore if effect cleaned up
             console.error('Error fetching attempts:', err);
             setError('Failed to load attempts. Please try again.');
             setLoading(false);
           }
         );
-
-      } catch (err) {
+      })
+      .catch((err) => {
+        if (!isActive) return; // Ignore if effect cleaned up
         console.error('Error fetching chief judge data:', err);
         setError('Failed to load data. Please try again.');
         setLoading(false);
-      }
-    }
+      });
 
-    fetchData();
-
-    // Cleanup subscription on unmount or parameter change
+    // Cleanup: mark effect as inactive and unsubscribe from listener
     return () => {
-      if (unsubscribeAttempts) {
-        unsubscribeAttempts();
+      isActive = false;
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
   }, [compId, categoryId, round, routeId, detailIndex]);

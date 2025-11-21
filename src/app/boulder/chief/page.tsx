@@ -8,7 +8,7 @@ import Container from '@/components/Container';
 import { firestore } from '@/lib/firebase/client';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { useUserRole, isStaffRole } from '@/hooks/useUserRole';
-import { useChiefJudgeAttempts } from '@/hooks/useChiefJudgeAttempts';
+import { useChiefJudgeAttempts, normalizeDetailIndex } from '@/hooks/useChiefJudgeAttempts';
 import {
   collection,
   getDocs,
@@ -83,11 +83,12 @@ interface AttemptDocument {
 
 /**
  * Undo Action
+ * CRITICAL: Store FULL document before any mutation to prevent data loss
  */
 interface UndoAction {
   type: 'update' | 'delete';
   attemptId: string;
-  before: Partial<AttemptDocument>;
+  before: AttemptDocument; // Full document, not partial
   description: string;
 }
 
@@ -183,6 +184,10 @@ function ChiefJudgeInterface() {
 
   // Edit panel needs to track which route is being edited (for All Boulders mode)
   const [editingRouteId, setEditingRouteId] = useState<string>('');
+
+  // CRITICAL: Track the detailIndex for the athlete being edited
+  // For qualification rounds, this ensures all edits/adds use the correct detail
+  const [editingDetailIndex, setEditingDetailIndex] = useState<number | undefined>(undefined);
 
   // Leaderboard Note state
   const [leaderboardNote, setLeaderboardNote] = useState('');
@@ -297,6 +302,32 @@ function ChiefJudgeInterface() {
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 2400);
   };
+
+  // CRITICAL: Reset filters when competition changes
+  // Prevents stale category/route/detail references from previous comp
+  useEffect(() => {
+    if (!selectedComp) return;
+
+    // Reset category and dependent filters
+    setSelectedCategory('');
+    setSelectedRoute('');
+    setSelectedDetail('');
+    setCategories([]);
+    setRoutes([]);
+    setDetails([]);
+  }, [selectedComp]);
+
+  // CRITICAL: Reset route/detail filters when category changes
+  // Prevents stale route/detail references from previous category
+  useEffect(() => {
+    if (!selectedCategory) return;
+
+    // Reset dependent filters but keep category
+    setSelectedRoute('');
+    setSelectedDetail('');
+    setRoutes([]);
+    setDetails([]);
+  }, [selectedCategory]);
 
   // Load competitions on mount
   useEffect(() => {
@@ -525,8 +556,13 @@ function ChiefJudgeInterface() {
       return;
     }
 
+    // CRITICAL: Normalize detailIndex to number for queries
+    // This ensures we query the same type that's stored in Firestore
+    const normalizedDetail = normalizeDetailIndex(detailIndexToMatch);
+
     setSelectedAthleteId(athleteId); // Keep composite key for highlighting
     setEditingRouteId(routeIdToEdit); // Store for add attempt
+    setEditingDetailIndex(normalizedDetail); // Store normalized detail for qualification
     setEditPanelVisible(true);
 
     try {
@@ -538,10 +574,10 @@ function ChiefJudgeInterface() {
         where('round', '==', round),
       ];
 
-      if (round === 'qualification' && detailIndexToMatch) {
-        const parsed = Number(detailIndexToMatch);
-        const detailFilter = Number.isNaN(parsed) ? detailIndexToMatch : parsed;
-        constraints.push(where('detailIndex', '==', detailFilter));
+      // CRITICAL: For qualification, always filter by normalized detailIndex
+      // This prevents cross-detail contamination
+      if (round === 'qualification' && normalizedDetail !== undefined) {
+        constraints.push(where('detailIndex', '==', normalizedDetail));
       }
 
       const attemptsQuery = query(attemptsRef, ...constraints, orderBy('clientAtMs', 'asc'));
@@ -570,6 +606,7 @@ function ChiefJudgeInterface() {
     setEditPanelVisible(false);
     setAttemptHistory([]);
     setEditingRouteId('');
+    setEditingDetailIndex(undefined); // Reset detail index
     setNewAttemptSymbol('1');
   };
 
@@ -582,12 +619,19 @@ function ChiefJudgeInterface() {
       ? selectedAthleteId.split('_')[0]
       : selectedAthleteId;
 
+    // CRITICAL: For qualification, detailIndex is REQUIRED
+    // This prevents malformed records that break leaderboards
+    if (round === 'qualification' && editingDetailIndex === undefined) {
+      showToast('Cannot add attempts in "All Details" view. Please select a specific detail first.');
+      return;
+    }
+
     setAddingAttempt(true);
 
     try {
       const attemptsRef = collection(firestore, `boulderComps/${selectedComp}/attempts`);
 
-      // Prepare attempt data
+      // Prepare attempt data with all required fields
       const attemptData: Record<string, unknown> = {
         compId: selectedComp,
         athleteId: actualAthleteId,
@@ -602,10 +646,9 @@ function ChiefJudgeInterface() {
         offline: false,
       };
 
-      // Add detailIndex for qualification rounds
-      if (round === 'qualification' && detailIndexToMatch) {
-        const parsed = Number(detailIndexToMatch);
-        attemptData.detailIndex = Number.isNaN(parsed) ? detailIndexToMatch : parsed;
+      // Add detailIndex for qualification rounds (already validated above)
+      if (round === 'qualification' && editingDetailIndex !== undefined) {
+        attemptData.detailIndex = editingDetailIndex;
       }
 
       const docRef = await addDoc(attemptsRef, attemptData);
@@ -707,11 +750,17 @@ function ChiefJudgeInterface() {
     const attemptRef = doc(firestore, `boulderComps/${selectedComp}/attempts/${lastAction.attemptId}`);
 
     try {
+      // CRITICAL: We stored the FULL document in lastAction.before
+      // Use merge: false to completely replace the document with the saved state
+      // This works for both update (revert fields) and delete (restore doc) cases
+      const beforeData = { ...lastAction.before };
+      delete (beforeData as { id?: string }).id; // Remove id field (not a Firestore field)
+
+      await setDoc(attemptRef, beforeData, { merge: false });
+
       if (lastAction.type === 'update') {
-        await setDoc(attemptRef, lastAction.before, { merge: false });
         showToast('Reverted changes.');
       } else if (lastAction.type === 'delete') {
-        await setDoc(attemptRef, lastAction.before, { merge: true });
         showToast('Restored deleted attempt.');
       }
 

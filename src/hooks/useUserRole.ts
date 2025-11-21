@@ -39,11 +39,16 @@ export type UserRole = 'viewer' | 'judge' | 'staff' | 'admin';
  * ```
  */
 export function useUserRole() {
-  const { isSignedIn, isLoaded: clerkLoaded } = useUser();
+  const { isSignedIn, isLoaded: clerkLoaded, user: clerkUser } = useUser();
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // CRITICAL: Reset state on any parameter change
+    // Prevents stale role from previous user
+    setRole(null);
+    setLoading(true);
+
     // Wait for Clerk to load first
     if (!clerkLoaded) {
       return;
@@ -58,22 +63,34 @@ export function useUserRole() {
 
     // Clerk is signed in - check Firebase
     if (!firebaseAuth) {
-      console.warn('Firebase Auth not initialized');
+      console.warn('[useUserRole] Firebase Auth not initialized');
       setRole(null);
       setLoading(false);
       return;
     }
 
+    // CRITICAL: Track if Firebase auth resolves within reasonable time
+    // If useFirebaseAuth fails completely, we need to stop loading
+    const timeoutId = setTimeout(() => {
+      console.warn('[useUserRole] Firebase auth timeout - assuming no Firebase user');
+      setRole(null);
+      setLoading(false);
+    }, 10000); // 10 second timeout
+
     // Listen to Firebase auth state changes
     const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+      clearTimeout(timeoutId); // Cancel timeout once auth resolves
+
       if (!user) {
         // No Firebase user yet, but Clerk is signed in
-        // This means useFirebaseAuth is still in progress
-        // Keep loading=true to prevent premature "access denied"
+        // This means useFirebaseAuth is still in progress OR failed
         console.log('[useUserRole] No Firebase user yet');
         setRole(null);
-        // Note: We DON'T set loading=false here!
-        // The parent component uses isFirebaseAuthenticated to determine when Firebase auth is done
+        // Set loading=false after a brief wait to handle permanent failures
+        // The parent should check both loading and isFirebaseAuthenticated
+        setTimeout(() => {
+          setLoading(false);
+        }, 2000);
         return;
       }
 
@@ -102,9 +119,12 @@ export function useUserRole() {
       }
     });
 
-    // Cleanup subscription
-    return () => unsubscribe();
-  }, [clerkLoaded, isSignedIn]);
+    // Cleanup subscription and timeout
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
+  }, [clerkLoaded, isSignedIn, clerkUser?.id]); // Add clerkUser?.id to reset on user switch
 
   return { role, loading };
 }
