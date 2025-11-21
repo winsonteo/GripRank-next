@@ -68,8 +68,9 @@ service cloud.firestore {
 
       match /attempts/{attemptId} {
         allow read: if true;
-        // Temporarily allow all authenticated users to create attempts for debugging
-        allow create: if request.auth != null;
+        allow create: if isJudge()
+                      && request.resource.data.compId == compId
+                      && request.resource.data.symbol in ['1','Z','T'];
         allow update, delete: if isAdminOrStaff();
       }
     }
@@ -111,8 +112,9 @@ service cloud.firestore {
 
       match /attempts/{attemptId} {
         allow read: if true;
-        // Temporarily allow all authenticated users to create attempts for debugging
-        allow create: if request.auth != null;
+        allow create: if isJudge()
+                      && request.resource.data.compId == compId
+                      && request.resource.data.symbol in ['1','Z','T'];
         allow update, delete: if isAdminOrStaff();
       }
     }
