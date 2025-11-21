@@ -366,43 +366,68 @@ CONTACT_TO=contact@griprank.com
 
 The `FIREBASE_ADMIN_PRIVATE_KEY` must be a PEM-formatted RSA private key from your Firebase service account JSON.
 
-**Expected format:**
+**IMPORTANT: Format differs between local and Vercel!**
+
+#### Local Development (`.env.local`)
+
+Use literal `\n` escape sequences wrapped in quotes:
+
 ```bash
 FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhk...\n-----END PRIVATE KEY-----\n"
 ```
 
-**Key requirements:**
-1. Must include the full key from service account JSON (with `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers)
-2. Can contain either:
-   - Literal `\n` escape sequences (recommended for Vercel/production)
-   - Actual newline characters (common in local `.env.local`)
-3. Must be wrapped in quotes if it contains newlines or special characters
+#### Production (Vercel)
 
-**Getting the key:**
+Use **actual newlines** (NOT `\n` escape sequences):
+
+1. Go to Vercel → Project Settings → Environment Variables
+2. Add `FIREBASE_ADMIN_PRIVATE_KEY`
+3. In the value field, paste the key with **real line breaks**:
+
+```
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC5xf7AxjOjfxcf
+NDySoheHmoTS7uJ9RwcIMGm3jhQEJOPWVYpFB7/b6Qk/DV/4Q4IW2hljEjOZ6VnJ
+...
+C/gF6HfU80rQ/v3a1UkdkrRg
+-----END PRIVATE KEY-----
+```
+
+4. **Do NOT wrap in quotes** in Vercel's UI
+5. Apply to: Production, Preview, Development
+
+**Getting the key from Firebase:**
+
 1. Go to [Firebase Console](https://console.firebase.google.com) → Project Settings → Service Accounts
-2. Click "Generate New Private Key"
-3. Open the downloaded JSON file
-4. Copy the entire `private_key` value (including `-----BEGIN...` and `-----END...`)
-5. For Vercel: Keep the `\n` characters as-is
-6. For local `.env.local`: You can use the format shown in the example above
+2. Click "Generate New Private Key" → Download JSON
+3. Open the JSON file and find the `private_key` field
+4. Copy the entire value (including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`)
+5. **For Vercel:** Convert `\n` to actual newlines (see format above)
+6. **For local:** Keep `\n` escape sequences as-is
 
 **Troubleshooting:**
 
-If you see errors like:
-- `Missing Firebase Admin SDK environment variables: FIREBASE_ADMIN_PRIVATE_KEY`
-- `FIREBASE_ADMIN_PRIVATE_KEY is not in correct format (missing BEGIN PRIVATE KEY)`
+**Error:** `Getting metadata from plugin failed` (Firestore query fails)
+- **Cause:** Private key format is incorrect
+- **Fix:** Use actual newlines in Vercel (not `\n` characters)
 
-Check Vercel logs for:
-```
-[Firebase Admin] Missing Firebase Admin SDK environment variables: ...
-[Firebase Admin] FIREBASE_ADMIN_PRIVATE_KEY is not in correct format
-[Firebase Admin] Key preview (first 50 chars): ...
-```
+**Error:** `FIREBASE_ADMIN_PRIVATE_KEY is not in correct format`
+- **Check logs for:** `[Firebase Admin] Key preview (first 50 chars): ...`
+- **Fix:** Ensure key includes `-----BEGIN PRIVATE KEY-----` header
 
-Common fixes:
-- Ensure the key is wrapped in quotes in Vercel environment settings
-- Verify you copied the entire key including headers and footers
-- Check that `\n` characters weren't accidentally removed or converted
+**Error:** `Missing Firebase Admin SDK environment variables`
+- **Fix:** Add all three required vars: `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`
+
+**Vercel deployment logs to check:**
+```
+✅ Success:
+[Firebase Admin] ✅ Firebase Admin app initialized successfully
+[Firebase Token] ✅ Token created successfully for user: [userId]
+
+❌ Failure:
+[Firebase Token] Failed to initialize Admin DB: Error: Missing Firebase Admin...
+[Firebase Token] Firestore query failed: Error: Getting metadata from plugin failed
+```
 
 ---
 
