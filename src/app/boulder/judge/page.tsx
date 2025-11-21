@@ -639,6 +639,7 @@ export default function JudgePage() {
       setSaveMessage(`Saved: ${selectedSymbol} for ${selectedAthlete.name || selectedAthlete.id}`);
       setLastAthlete(selectedAthlete);
       setSelectedSymbol(null);
+      setSelectedAthlete(null); // Unselect athlete to prevent wrong entry
 
       // Auto-clear message after 3 seconds
       setTimeout(() => setSaveMessage(""), 3000);
