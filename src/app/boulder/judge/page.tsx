@@ -7,6 +7,7 @@ import Link from "next/link";
 import Script from "next/script";
 import Container from "@/components/Container";
 import { firestore } from "@/lib/firebase/client";
+import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import {
   collection,
   getDocs,
@@ -84,6 +85,9 @@ type RoundType = "qualification" | "final";
 
 export default function JudgePage() {
   const { user, isLoaded } = useUser();
+
+  // Authenticate with Firebase using Clerk session
+  useFirebaseAuth();
 
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [competitionsLoading, setCompetitionsLoading] = useState(true);
@@ -882,7 +886,7 @@ export default function JudgePage() {
           )}
 
           {rosterExpanded && (
-            <div className="min-h-[100px] max-h-[260px] overflow-y-auto">
+            <div className="min-h-[50px] max-h-[130px] overflow-y-auto">
               {athletesLoading ? (
                 <div className="text-muted-foreground text-center py-8">
                   Loading athletes...

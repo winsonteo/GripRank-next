@@ -2,12 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
-    function userHasRole(roles) {
+    // Check role from custom token claim (no Firestore lookup needed)
+    function hasRole(role) {
       return request.auth != null &&
-             get(/databases/$(db)/documents/roles/$(request.auth.uid)).data.role in roles;
+             request.auth.token.role == role;
     }
-    function isAdminOrStaff() { return userHasRole(['staff','admin']); }
-    function isJudge()        { return userHasRole(['judge']); }
+
+    function hasAnyRole(roles) {
+      return request.auth != null &&
+             request.auth.token.role in roles;
+    }
+
+    function isAdminOrStaff() { return hasAnyRole(['staff', 'admin']); }
+    function isJudge()        { return hasAnyRole(['judge', 'staff', 'admin']); }
 
     /* ================= BOULDER (boulderComps) ================= */
     match /boulderComps/{compId} {
@@ -61,7 +68,7 @@ service cloud.firestore {
 
       match /attempts/{attemptId} {
         allow read: if true;
-        allow create: if (isJudge() || isAdminOrStaff())
+        allow create: if isJudge()
                       && request.resource.data.compId == compId
                       && request.resource.data.symbol in ['1','Z','T'];
         allow update, delete: if isAdminOrStaff();
@@ -105,7 +112,7 @@ service cloud.firestore {
 
       match /attempts/{attemptId} {
         allow read: if true;
-        allow create: if (isJudge() || isAdminOrStaff())
+        allow create: if isJudge()
                       && request.resource.data.compId == compId
                       && request.resource.data.symbol in ['1','Z','T'];
         allow update, delete: if isAdminOrStaff();
@@ -115,8 +122,8 @@ service cloud.firestore {
     /* ================= ROLES ================= */
     match /roles/{uid} {
       allow read: if request.auth != null &&
-                   (request.auth.uid == uid || userHasRole(['admin']));
-      allow write: if userHasRole(['admin']);
+                   (request.auth.uid == uid || hasAnyRole(['admin']));
+      allow write: if hasAnyRole(['admin']);
     }
 
     /* Catch-all deny */
