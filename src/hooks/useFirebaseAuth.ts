@@ -30,9 +30,12 @@ export function useFirebaseAuth() {
       try {
         // Check if already signed into Firebase
         if (firebaseAuth.currentUser) {
+          console.log('✅ Already signed into Firebase:', firebaseAuth.currentUser.uid);
           setIsFirebaseAuthenticated(true);
           return;
         }
+
+        console.log('🔄 Fetching Firebase custom token...');
 
         // Get custom token from our API
         const response = await fetch('/api/auth/firebase-token');
@@ -42,18 +45,21 @@ export function useFirebaseAuth() {
         }
 
         const data = await response.json();
+        console.log('📝 Token received, role:', data.role);
 
         if (!data.token) {
           throw new Error('No token received from API');
         }
 
         // Sign into Firebase with custom token
-        await signInWithCustomToken(firebaseAuth, data.token);
+        console.log('🔐 Signing into Firebase...');
+        const userCredential = await signInWithCustomToken(firebaseAuth, data.token);
+        console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
 
         setIsFirebaseAuthenticated(true);
         setError(null);
       } catch (err) {
-        console.error('Firebase authentication error:', err);
+        console.error('❌ Firebase authentication error:', err);
         setError(err instanceof Error ? err.message : 'Authentication failed');
         setIsFirebaseAuthenticated(false);
       }
