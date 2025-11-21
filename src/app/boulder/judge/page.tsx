@@ -1078,46 +1078,83 @@ export default function JudgePage() {
                 </div>
               ) : attempts.length === 0 ? (
                 <div className="text-muted-foreground text-center py-8">
-                  No attempts recorded yet.
+                  {round === "final"
+                    ? "No finals attempts yet for this route."
+                    : "No attempts yet for this route/detail."}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="border-b border-border">
                       <tr className="text-left">
+                        <th className="py-2 px-3 font-medium text-muted-foreground w-12">#</th>
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Bib</th>
                         <th className="py-2 px-3 font-medium text-muted-foreground">Athlete</th>
-                        <th className="py-2 px-3 font-medium text-muted-foreground">Symbol</th>
-                        <th className="py-2 px-3 font-medium text-muted-foreground">Time</th>
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Attempts</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {attempts.map((attempt) => {
-                        const athlete = athletes.find(a => a.id === attempt.athleteId);
-                        const timestamp = attempt.clientAtMs
-                          ? new Date(attempt.clientAtMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                          : '-';
+                      {(() => {
+                        // Sort attempts chronologically
+                        const chronological = [...attempts].sort((a, b) =>
+                          (a.clientAtMs || 0) - (b.clientAtMs || 0)
+                        );
 
-                        return (
-                          <tr key={attempt.id} className="border-b border-border hover:bg-input/50">
+                        // Aggregate attempts by athlete
+                        const aggregated = new Map<string, string[]>();
+                        chronological.forEach((att) => {
+                          if (!aggregated.has(att.athleteId)) {
+                            aggregated.set(att.athleteId, []);
+                          }
+                          if (att.symbol) {
+                            aggregated.get(att.athleteId)!.push(att.symbol);
+                          }
+                        });
+
+                        // Build athlete list with attempt sequences
+                        const athleteRows = athletes
+                          .filter((ath) => aggregated.has(ath.id))
+                          .map((ath, index) => {
+                            const symbols = aggregated.get(ath.id) || [];
+                            const sequence = symbols.length ? symbols.join('') : '—';
+                            return {
+                              order: index + 1,
+                              bib: ath.bib || ath.id,
+                              name: ath.name || ath.id,
+                              team: ath.team,
+                              sequence
+                            };
+                          });
+
+                        // Add any athletes that have attempts but aren't in the roster
+                        aggregated.forEach((_, athleteId) => {
+                          if (!athletes.some((ath) => ath.id === athleteId)) {
+                            const symbols = aggregated.get(athleteId) || [];
+                            const sequence = symbols.length ? symbols.join('') : '—';
+                            athleteRows.push({
+                              order: athleteRows.length + 1,
+                              bib: athleteId,
+                              name: athleteId,
+                              team: undefined,
+                              sequence
+                            });
+                          }
+                        });
+
+                        return athleteRows.map((row) => (
+                          <tr key={row.bib} className="border-b border-border hover:bg-input/50">
+                            <td className="py-2 px-3 text-muted-foreground">{row.order}</td>
+                            <td className="py-2 px-3 font-semibold">#{row.bib}</td>
                             <td className="py-2 px-3">
-                              {athlete?.bib && <span className="font-semibold">#{athlete.bib} </span>}
-                              {athlete?.name || attempt.athleteId}
+                              {row.name}
+                              {row.team && <span className="text-muted-foreground text-xs ml-1">({row.team})</span>}
                             </td>
-                            <td className="py-2 px-3">
-                              <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                                attempt.symbol === 'T' ? 'bg-green-500 text-white' :
-                                attempt.symbol === 'Z' ? 'bg-yellow-500 text-white' :
-                                'bg-red-500 text-white'
-                              }`}>
-                                {attempt.symbol}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-muted-foreground text-xs">
-                              {timestamp}
+                            <td className="py-2 px-3 font-mono text-base font-semibold">
+                              {row.sequence}
                             </td>
                           </tr>
-                        );
-                      })}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
