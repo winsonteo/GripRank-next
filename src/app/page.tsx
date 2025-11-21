@@ -22,7 +22,7 @@ export default function HomePage() {
               From Score Sheet to <span className="text-blue-400">Live Results</span>
             </h1>
             <p className="text-neutral-400 leading-relaxed max-w-2xl mx-auto md:mx-0">
-              The competition management system built by organisers, made for climbers.
+              The competition management platform built by organisers, for organisers — supporting Boulder and Speed comps, with Lead in development.
             </p>
             <Button
               size="lg"
@@ -66,8 +66,9 @@ export default function HomePage() {
             What is GripRank?
           </h2>
           <p className="text-neutral-400 leading-relaxed max-w-3xl mx-auto md:mx-0">
-            GripRank connects competitions, organisers, and climbers through real-time digital scorekeeping and results.
-            Whether you’re following VengaFest or any future event, this is where live results live.
+            GripRank connects organisers, judges, and climbers through real-time digital scoring — across Boulder and Speed events, with Lead support coming soon.
+            Built to replace paper score sheets, reduce human error, and make competition day smoother for everyone.
+            Whether you’re following VengaFest or any future comp — this is where live results happen.
           </p>
           <Button variant="ghost" asChild className="mt-8 text-blue-400 hover:bg-grey-700 hover:text-blue-300">
             <Link href="/about">Learn More About GripRank →</Link>
@@ -82,7 +83,9 @@ export default function HomePage() {
             For Organisers — Coming Soon
           </h3>
           <p className="text-neutral-400 leading-relaxed max-w-2xl mx-auto">
-            Streamline your competition from score sheet to leaderboard. GripRank’s organiser tools are in closed testing and launching soon.
+            Streamline your entire event — from judging to results — with tools designed by real competition directors.
+            GripRank’s organiser suite supports Boulder and Speed formats today, and Lead is already in development.
+            Want early access or to test it at your next event?
           </p>
           <Button
             variant="secondary"
