@@ -131,6 +131,12 @@ export default function JudgePage() {
   const [qrError, setQrError] = useState("");
   const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
 
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingChange, setPendingChange] = useState<{
+    type: 'comp' | 'category' | 'round' | 'route' | 'detail';
+    value: string;
+  } | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -143,6 +149,70 @@ export default function JudgePage() {
     usedRoute: false,
     usedDetail: false,
   });
+
+  // Handle judge station change confirmation
+  const handleStationChange = (type: 'comp' | 'category' | 'round' | 'route' | 'detail', value: string) => {
+    // Skip confirmation for initial auto-selections
+    const isInitialSelection = (
+      (type === 'comp' && !initialSelectionsRef.current.usedComp) ||
+      (type === 'category' && !initialSelectionsRef.current.usedCategory) ||
+      (type === 'route' && !initialSelectionsRef.current.usedRoute) ||
+      (type === 'detail' && !initialSelectionsRef.current.usedDetail)
+    );
+
+    // Get current value to check if it's actually changing
+    const currentValue = type === 'comp' ? selectedComp :
+                        type === 'category' ? selectedCategory :
+                        type === 'round' ? round :
+                        type === 'route' ? selectedRoute :
+                        selectedDetail;
+
+    // If no change, just return
+    if (value === currentValue) return;
+
+    // If initial selection or empty current value, apply directly
+    if (isInitialSelection || !currentValue) {
+      applyStationChange(type, value);
+      return;
+    }
+
+    // Show confirmation dialog for manual changes
+    setPendingChange({ type, value });
+    setShowConfirmDialog(true);
+  };
+
+  const applyStationChange = (type: 'comp' | 'category' | 'round' | 'route' | 'detail', value: string) => {
+    switch (type) {
+      case 'comp':
+        setSelectedComp(value);
+        break;
+      case 'category':
+        setSelectedCategory(value);
+        break;
+      case 'round':
+        setRound(value as RoundType);
+        break;
+      case 'route':
+        setSelectedRoute(value);
+        break;
+      case 'detail':
+        setSelectedDetail(value);
+        break;
+    }
+  };
+
+  const handleConfirmChange = () => {
+    if (pendingChange) {
+      applyStationChange(pendingChange.type, pendingChange.value);
+    }
+    setShowConfirmDialog(false);
+    setPendingChange(null);
+  };
+
+  const handleCancelChange = () => {
+    setShowConfirmDialog(false);
+    setPendingChange(null);
+  };
 
   // Load competitions on mount
   useEffect(() => {
@@ -792,7 +862,7 @@ export default function JudgePage() {
                 <select
                   className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedComp}
-                  onChange={(e) => setSelectedComp(e.target.value)}
+                  onChange={(e) => handleStationChange('comp', e.target.value)}
                   disabled={competitionsLoading}
                 >
                   <option value="">
@@ -811,7 +881,7 @@ export default function JudgePage() {
                 <select
                   className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) => handleStationChange('category', e.target.value)}
                   disabled={!selectedComp || categoriesLoading}
                 >
                   <option value="">
@@ -830,7 +900,7 @@ export default function JudgePage() {
                 <select
                   className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
                   value={round}
-                  onChange={(e) => setRound(e.target.value as RoundType)}
+                  onChange={(e) => handleStationChange('round', e.target.value)}
                 >
                   <option value="qualification">Qualification</option>
                   <option value="final">Final</option>
@@ -842,7 +912,7 @@ export default function JudgePage() {
                 <select
                   className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedRoute}
-                  onChange={(e) => setSelectedRoute(e.target.value)}
+                  onChange={(e) => handleStationChange('route', e.target.value)}
                   disabled={routesLoading || !routes.length}
                 >
                   <option value="">
@@ -861,7 +931,7 @@ export default function JudgePage() {
                 <select
                   className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedDetail}
-                  onChange={(e) => setSelectedDetail(e.target.value)}
+                  onChange={(e) => handleStationChange('detail', e.target.value)}
                   disabled={detailsLoading || !details.length}
                 >
                   <option value="">
@@ -1250,6 +1320,32 @@ export default function JudgePage() {
                   </p>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Dialog */}
+        {showConfirmDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+              <h3 className="text-2xl font-bold mb-4 text-gray-900">Confirm Station Change</h3>
+              <p className="text-gray-700 mb-6">
+                Are you sure you want to change the judge station settings? This will affect which attempts are recorded.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelChange}
+                  className="flex-1 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmChange}
+                  className="flex-1 px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity shadow-md"
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
         )}
