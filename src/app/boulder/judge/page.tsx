@@ -6,8 +6,10 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import Container from "@/components/Container";
+import AccessDenied from "@/components/AccessDenied";
 import { firestore } from "@/lib/firebase/client";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
+import { useUserRole, isJudgeRole } from "@/hooks/useUserRole";
 import {
   collection,
   getDocs,
@@ -84,10 +86,44 @@ interface AttemptRecord {
 type RoundType = "qualification" | "final";
 
 export default function JudgePage() {
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
 
   // Authenticate with Firebase using Clerk session
   useFirebaseAuth();
+
+  // Check user role for access control
+  // ALLOWED ROLES: judge, staff, admin
+  // Source: Firebase custom token claims from /api/auth/firebase-token
+  const { role, loading: roleLoading } = useUserRole();
+
+  // ROLE-BASED ACCESS CONTROL
+  // Show loading state while checking authentication and role
+  if (!isLoaded || roleLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 text-lg">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Access denied for users without judge/staff/admin role
+  // This prevents viewers from seeing judge UI (they can't write attempts anyway due to Firestore rules)
+  if (!isJudgeRole(role)) {
+    return <AccessDenied feature="Judge Panel" />;
+  }
+
+  // User has correct role - render judge interface
+  return <JudgeInterface />;
+}
+
+/**
+ * JudgeInterface - The actual judge pad UI
+ * Separated from JudgePage to keep role gating logic clean and easy to find
+ */
+function JudgeInterface() {
+  const { user, isLoaded } = useUser();
 
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [competitionsLoading, setCompetitionsLoading] = useState(true);

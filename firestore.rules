@@ -2,19 +2,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
-    // Check role from custom token claim (no Firestore lookup needed)
-    function hasRole(role) {
-      return request.auth != null &&
-             request.auth.token.role == role;
+    // Auth helpers (Clerk-issued Firebase custom tokens)
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    function hasAnyRole(roles) {
-      return request.auth != null &&
-             request.auth.token.role in roles;
+    function hasRole(roles) {
+      return isSignedIn() && request.auth.token.role in roles;
     }
 
-    function isAdminOrStaff() { return hasAnyRole(['staff', 'admin']); }
-    function isJudge()        { return hasAnyRole(['judge', 'staff', 'admin']); }
+    function isAdminOrStaff() { return hasRole(['staff', 'admin']); }
+    function isJudge()        { return hasRole(['judge', 'staff', 'admin']); }
 
     /* ================= BOULDER (boulderComps) ================= */
     match /boulderComps/{compId} {
@@ -67,11 +65,14 @@ service cloud.firestore {
       }
 
       match /attempts/{attemptId} {
+        // Reads are public for now to support live leaderboards; tighten if needed.
         allow read: if true;
-        allow create: if isJudge()
-                      && request.resource.data.compId == compId
-                      && request.resource.data.symbol in ['1','Z','T'];
-        allow update, delete: if isAdminOrStaff();
+
+        // Writes restricted to authenticated judges/staff/admin using token role claims.
+        allow create, update: if isJudge()
+                              && request.resource.data.compId == compId
+                              && request.resource.data.symbol in ['1','Z','T'];
+        allow delete: if isAdminOrStaff();
       }
     }
 
@@ -111,19 +112,22 @@ service cloud.firestore {
       }
 
       match /attempts/{attemptId} {
+        // Reads are public for now to support live leaderboards; tighten if needed.
         allow read: if true;
-        allow create: if isJudge()
-                      && request.resource.data.compId == compId
-                      && request.resource.data.symbol in ['1','Z','T'];
-        allow update, delete: if isAdminOrStaff();
+
+        // Writes restricted to authenticated judges/staff/admin using token role claims.
+        allow create, update: if isJudge()
+                              && request.resource.data.compId == compId
+                              && request.resource.data.symbol in ['1','Z','T'];
+        allow delete: if isAdminOrStaff();
       }
     }
 
     /* ================= ROLES ================= */
     match /roles/{uid} {
-      allow read: if request.auth != null &&
-                   (request.auth.uid == uid || hasAnyRole(['admin']));
-      allow write: if hasAnyRole(['admin']);
+      allow read: if isSignedIn() &&
+                   (request.auth.uid == uid || hasRole(['admin']));
+      allow write: if hasRole(['admin']);
     }
 
     /* Catch-all deny */
