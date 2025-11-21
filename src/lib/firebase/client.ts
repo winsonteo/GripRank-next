@@ -62,9 +62,10 @@ if (typeof window !== "undefined") {
         initPersistence(firestore);
       }
 
-      if (auth && firestore) {
-        connectEmulators(auth, firestore);
-      }
+      // Disable emulators for now - use production Firebase
+      // if (auth && firestore) {
+      //   connectEmulators(auth, firestore);
+      // }
     }
   } catch (error) {
     // Silently ignore "already been started" errors during hot reload
