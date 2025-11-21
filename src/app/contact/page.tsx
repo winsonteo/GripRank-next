@@ -62,7 +62,8 @@ export default function ContactPage() {
             Get in Touch
           </motion.h1>
           <p className="text-neutral-400 leading-relaxed max-w-2xl mx-auto">
-            Whether you’re an organiser, climber, or fan — we’d love to hear from you. Reach out with questions, feedback, or collaboration ideas.
+            We’d love to hear from you — especially if you’re running a Boulder or Speed comp and want to simplify your judging and results.
+            Lead organisers — we’d love your feedback too, as that format is in active development.
           </p>
         </Container>
       </section>
