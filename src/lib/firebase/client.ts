@@ -13,6 +13,10 @@ import {
 
 type FirebaseGlobal = typeof globalThis & {
   __FIREBASE_EMULATORS_CONNECTED__?: boolean;
+  __FIREBASE_APP__?: FirebaseApp;
+  __FIREBASE_AUTH__?: Auth;
+  __FIREBASE_FIRESTORE__?: Firestore;
+  __FIREBASE_PERSISTENCE_PROMISE__?: Promise<void>;
 };
 
 let app: FirebaseApp | null = null;
@@ -24,13 +28,37 @@ let persistencePromise: Promise<void> | null = null;
 if (typeof window !== "undefined") {
   try {
     const firebaseConfig = resolveFirebaseConfig();
+    const firebaseGlobal = globalThis as FirebaseGlobal;
 
     if (firebaseConfig) {
-      app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      firestore = getFirestore(app);
+      // Get or initialize app - check global cache first
+      if (firebaseGlobal.__FIREBASE_APP__) {
+        app = firebaseGlobal.__FIREBASE_APP__;
+      } else {
+        app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+        firebaseGlobal.__FIREBASE_APP__ = app;
+      }
 
-      if (firestore) {
+      // Get Auth - check global cache first
+      if (firebaseGlobal.__FIREBASE_AUTH__) {
+        auth = firebaseGlobal.__FIREBASE_AUTH__;
+      } else {
+        auth = getAuth(app);
+        firebaseGlobal.__FIREBASE_AUTH__ = auth;
+      }
+
+      // Get Firestore - check global cache first
+      if (firebaseGlobal.__FIREBASE_FIRESTORE__) {
+        firestore = firebaseGlobal.__FIREBASE_FIRESTORE__;
+      } else {
+        firestore = getFirestore(app);
+        firebaseGlobal.__FIREBASE_FIRESTORE__ = firestore;
+      }
+
+      // Get persistence promise from global cache
+      if (firebaseGlobal.__FIREBASE_PERSISTENCE_PROMISE__) {
+        persistencePromise = firebaseGlobal.__FIREBASE_PERSISTENCE_PROMISE__;
+      } else if (firestore) {
         initPersistence(firestore);
       }
 
@@ -39,16 +67,31 @@ if (typeof window !== "undefined") {
       }
     }
   } catch (error) {
-    console.error("[firebase] Initialization error:", error);
-    // Set to null to trigger fallback UI
-    app = null;
-    auth = null;
-    firestore = null;
+    // Silently ignore "already been started" errors during hot reload
+    if (error instanceof Error && error.message.includes('already been started')) {
+      // This is expected during development hot reloads - Firestore is already initialized
+      // Just reuse the existing instances from global cache
+      const firebaseGlobal = globalThis as FirebaseGlobal;
+      app = firebaseGlobal.__FIREBASE_APP__ || null;
+      auth = firebaseGlobal.__FIREBASE_AUTH__ || null;
+      firestore = firebaseGlobal.__FIREBASE_FIRESTORE__ || null;
+    } else {
+      console.error("[firebase] Initialization error:", error);
+      // Set to null to trigger fallback UI
+      app = null;
+      auth = null;
+      firestore = null;
+    }
   }
 }
 
 function initPersistence(db: Firestore) {
-  if (persistencePromise) return;
+  const firebaseGlobal = globalThis as FirebaseGlobal;
+
+  if (firebaseGlobal.__FIREBASE_PERSISTENCE_PROMISE__) {
+    persistencePromise = firebaseGlobal.__FIREBASE_PERSISTENCE_PROMISE__;
+    return;
+  }
 
   persistencePromise = enableIndexedDbPersistence(db).catch((error) => {
     // Silently fail on persistence errors - this is not critical
@@ -58,6 +101,8 @@ function initPersistence(db: Firestore) {
     }
     // failed-precondition = Firestore already started (hot reload), ignore silently
   });
+
+  firebaseGlobal.__FIREBASE_PERSISTENCE_PROMISE__ = persistencePromise;
 }
 
 function connectEmulators(authInstance: Auth, firestoreInstance: Firestore) {
