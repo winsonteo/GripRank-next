@@ -364,7 +364,7 @@ export default function JudgePage() {
 
   // Load attempts with real-time updates
   useEffect(() => {
-    if (!firestore || !selectedComp || !selectedRoute) {
+    if (!firestore || !selectedComp || !selectedCategory || !selectedRoute) {
       setAttempts([]);
       return;
     }
@@ -378,8 +378,9 @@ export default function JudgePage() {
     const db = firestore;
     const attemptsPath = `boulderComps/${selectedComp}/attempts`;
 
-    // Build query filters
+    // Build query filters - match old implementation
     const filters = [
+      where("categoryId", "==", selectedCategory),
       where("routeId", "==", selectedRoute),
       where("round", "==", round)
     ];
@@ -414,7 +415,7 @@ export default function JudgePage() {
     );
 
     return () => unsubscribe();
-  }, [selectedComp, selectedRoute, round, selectedDetail, details]);
+  }, [selectedComp, selectedCategory, selectedRoute, round, selectedDetail, details]);
 
   const handleNextDetail = () => {
     if (!details.length) return;
