@@ -679,9 +679,8 @@ export default function JudgePage() {
   useEffect(() => {
     if (!timerRunning) return;
 
-    // Vibrate during last 10 seconds
-    if (timerSeconds > 0 && timerSeconds <= 10) {
-      // Short pulse for countdown
+    // Vibrate once at 10 seconds mark
+    if (timerSeconds === 10) {
       if (navigator.vibrate) {
         navigator.vibrate(100);
       }
