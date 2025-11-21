@@ -86,10 +86,10 @@ interface AttemptRecord {
 type RoundType = "qualification" | "final";
 
 export default function JudgePage() {
-  const { isLoaded } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
 
   // Authenticate with Firebase using Clerk session
-  useFirebaseAuth();
+  const { isFirebaseAuthenticated, error: firebaseError } = useFirebaseAuth();
 
   // Check user role for access control
   // ALLOWED ROLES: judge, staff, admin
@@ -98,7 +98,13 @@ export default function JudgePage() {
 
   // ROLE-BASED ACCESS CONTROL
   // Show loading state while checking authentication and role
-  if (!isLoaded || roleLoading) {
+  // Wait for:
+  // 1. Clerk to load
+  // 2. Firebase auth to complete (if Clerk is signed in)
+  // 3. Role to be fetched from token claims
+  const waitingForFirebaseAuth = isSignedIn && !isFirebaseAuthenticated && !firebaseError;
+
+  if (!isLoaded || waitingForFirebaseAuth || roleLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">

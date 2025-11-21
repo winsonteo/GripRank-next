@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { auth as firebaseAuth } from '@/lib/firebase/client';
 
 /**
@@ -22,6 +23,11 @@ export type UserRole = 'viewer' | 'judge' | 'staff' | 'admin';
  * - staff: Judge + additional admin capabilities
  * - admin: Full access to all features
  *
+ * RACE CONDITION PREVENTION:
+ * Integrates with Clerk to avoid showing "access denied" while Firebase auth
+ * is still in progress. If Clerk is signed in but Firebase user doesn't exist yet,
+ * keeps loading=true to wait for useFirebaseAuth to complete.
+ *
  * USAGE:
  * ```typescript
  * const { role, loading } = useUserRole();
@@ -33,11 +39,24 @@ export type UserRole = 'viewer' | 'judge' | 'staff' | 'admin';
  * ```
  */
 export function useUserRole() {
+  const { isSignedIn, isLoaded: clerkLoaded } = useUser();
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if Firebase Auth is available
+    // Wait for Clerk to load first
+    if (!clerkLoaded) {
+      return;
+    }
+
+    // If not signed into Clerk, user has no role
+    if (!isSignedIn) {
+      setRole(null);
+      setLoading(false);
+      return;
+    }
+
+    // Clerk is signed in - check Firebase
     if (!firebaseAuth) {
       console.warn('Firebase Auth not initialized');
       setRole(null);
@@ -48,9 +67,12 @@ export function useUserRole() {
     // Listen to Firebase auth state changes
     const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
       if (!user) {
-        // User not signed in → no role
+        // No Firebase user yet, but Clerk is signed in
+        // This means useFirebaseAuth is still in progress
+        // Keep loading=true to prevent premature "access denied"
         setRole(null);
-        setLoading(false);
+        // Note: We DON'T set loading=false here!
+        // The parent component uses isFirebaseAuthenticated to determine when Firebase auth is done
         return;
       }
 
@@ -74,7 +96,7 @@ export function useUserRole() {
 
     // Cleanup subscription
     return () => unsubscribe();
-  }, []);
+  }, [clerkLoaded, isSignedIn]);
 
   return { role, loading };
 }
