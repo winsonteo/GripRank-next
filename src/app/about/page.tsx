@@ -25,8 +25,10 @@ export default function AboutPage() {
             Built by Organisers, <span className="text-blue-400">Made for Climbers</span>
           </motion.h1>
           <p className="text-neutral-400 leading-relaxed max-w-3xl mx-auto">
-            GripRank started as an internal tool to simplify how competitions are managed — from judging and tabulation to live result sharing.
-            Designed by people who run comps regularly, our goal is to make climbing competitions smoother, more transparent, and more connected.
+            GripRank began as an internal project to solve a familiar problem — the chaos of competition day.
+            From judging and score entry to live result sharing, we built GripRank to make events smoother, faster, and more transparent.
+            Today, it’s trusted by organisers across Boulder and Speed events, with Lead competition support actively in development.
+            Our goal: a complete end-to-end platform for every climbing format.
           </p>
         </Container>
       </section>
@@ -38,8 +40,8 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p className="text-neutral-400 leading-relaxed max-w-3xl mx-auto md:mx-0">
-            We believe every climber deserves clear, live access to results and every organiser deserves tools that reduce the chaos of running a competition.
-            GripRank bridges both sides — providing a fast, reliable, and fair system that keeps the community focused on what matters most: the climb.
+            To simplify competition management for organisers and make results instantly accessible for climbers — across Boulder, Speed, and soon Lead.
+            Our system is built to be fast, fair, and to keep the focus where it belongs: on the climb.
           </p>
         </Container>
       </section>
@@ -51,8 +53,8 @@ export default function AboutPage() {
             Our Vision
           </h2>
           <p className="text-neutral-400 leading-relaxed max-w-3xl mx-auto md:mx-0">
-            GripRank aims to become the trusted backbone of climbing competitions — a unified platform connecting organisers, athletes, and fans across regions.
-            As the sport grows, so will our ecosystem: smarter analytics, athlete tracking, and community engagement tools are on the horizon.
+            To become the trusted backbone of climbing competitions worldwide — connecting organisers, judges, and climbers through technology that enhances every discipline of the sport.
+            From Boulder and Speed to Lead, GripRank evolves with the community: building smarter tools that keep every event fair, efficient, and connected.
           </p>
           <Button
             asChild
@@ -72,7 +74,8 @@ export default function AboutPage() {
             🧰 For Organisers — Coming Soon
           </h3>
           <p className="text-neutral-400 leading-relaxed max-w-2xl mx-auto">
-            Our organiser dashboard is currently in testing with select partners. Streamline your event and deliver results instantly — join the waitlist to be first in line.
+            Our organiser dashboard is in pilot testing with partner gyms and event directors.
+            Be among the first to simplify your workflow for Boulder and Speed comps — with Lead support coming soon.
           </p>
           <Button
             variant="secondary"
@@ -80,7 +83,7 @@ export default function AboutPage() {
             className="mt-8 bg-blue-500 text-white hover:bg-blue-600 font-semibold px-6 py-3 rounded-xl"
           >
             <Link href="/contact">
-              Contact Us
+              Join the Pilot Program →
             </Link>
           </Button>
         </Container>
