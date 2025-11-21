@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { signInWithCustomToken } from 'firebase/auth';
+import { signInWithCustomToken, signOut } from 'firebase/auth';
 import { auth as firebaseAuth } from '@/lib/firebase/client';
 
 export function useFirebaseAuth() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { user, isSignedIn, isLoaded } = useUser();
   const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUserId, setLastUserId] = useState<string | null>(null);
 
+  // Effect 1: Handle Firebase sign-in when Clerk is signed in
   useEffect(() => {
     async function authenticateWithFirebase() {
       // Wait for Clerk to load
       if (!isLoaded) return;
 
-      // If not signed into Clerk, skip Firebase auth
+      // If not signed into Clerk, skip Firebase auth (sign-out handled separately)
       if (!isSignedIn) {
-        setIsFirebaseAuthenticated(false);
         return;
       }
 
@@ -28,10 +29,11 @@ export function useFirebaseAuth() {
       }
 
       try {
-        // Check if already signed into Firebase
-        if (firebaseAuth.currentUser) {
+        // Check if already signed into Firebase with the same user
+        if (firebaseAuth.currentUser && firebaseAuth.currentUser.uid === user?.id) {
           console.log('✅ Already signed into Firebase:', firebaseAuth.currentUser.uid);
           setIsFirebaseAuthenticated(true);
+          setLastUserId(user.id);
           return;
         }
 
@@ -57,6 +59,7 @@ export function useFirebaseAuth() {
         console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
 
         setIsFirebaseAuthenticated(true);
+        setLastUserId(user?.id || null);
         setError(null);
       } catch (err) {
         console.error('❌ Firebase authentication error:', err);
@@ -66,7 +69,39 @@ export function useFirebaseAuth() {
     }
 
     authenticateWithFirebase();
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, user?.id]);
+
+  // Effect 2: Handle Firebase sign-out when Clerk signs out or user switches accounts
+  useEffect(() => {
+    async function handleSignOut() {
+      if (!firebaseAuth || !isLoaded) return;
+
+      // Determine if we need to sign out:
+      // 1. Clerk is not signed in (user logged out)
+      // 2. User ID changed (account switch)
+      const shouldSignOut = !isSignedIn || (lastUserId && user?.id && user.id !== lastUserId);
+
+      if (shouldSignOut && firebaseAuth.currentUser) {
+        try {
+          await signOut(firebaseAuth);
+          console.log('🔓 Signed out of Firebase');
+          setIsFirebaseAuthenticated(false);
+          setError(null);
+        } catch (err) {
+          console.error('❌ Firebase sign-out error:', err);
+        }
+      }
+
+      // Update tracked user ID
+      if (isSignedIn && user?.id) {
+        setLastUserId(user.id);
+      } else if (!isSignedIn) {
+        setLastUserId(null);
+      }
+    }
+
+    handleSignOut();
+  }, [isLoaded, isSignedIn, user?.id, lastUserId]);
 
   return { isFirebaseAuthenticated, error };
 }

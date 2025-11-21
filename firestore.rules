@@ -122,8 +122,8 @@ service cloud.firestore {
     /* ================= ROLES ================= */
     match /roles/{uid} {
       allow read: if request.auth != null &&
-                   (request.auth.uid == uid || userHasRole(['admin']));
-      allow write: if userHasRole(['admin']);
+                   (request.auth.uid == uid || hasAnyRole(['admin']));
+      allow write: if hasAnyRole(['admin']);
     }
 
     /* Catch-all deny */
