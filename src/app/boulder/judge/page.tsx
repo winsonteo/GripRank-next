@@ -368,13 +368,32 @@ export default function JudgePage() {
       setAttempts([]);
       return;
     }
-    const db = firestore;
 
+    // For qualification rounds, require detail to be selected
+    if (round === "qualification" && !selectedDetail) {
+      setAttempts([]);
+      return;
+    }
+
+    const db = firestore;
     const attemptsPath = `boulderComps/${selectedComp}/attempts`;
+
+    // Build query filters
+    const filters = [
+      where("routeId", "==", selectedRoute),
+      where("round", "==", round)
+    ];
+
+    // For qualification rounds, filter by detailIndex
+    if (round === "qualification" && selectedDetail) {
+      const selectedDetailObj = details.find(d => d.id === selectedDetail);
+      const detailIndexToMatch = selectedDetailObj?.detailIndex || selectedDetailObj?.id || selectedDetail;
+      filters.push(where("detailIndex", "==", detailIndexToMatch));
+    }
+
     const q = query(
       collection(db, attemptsPath),
-      where("routeId", "==", selectedRoute),
-      where("round", "==", round),
+      ...filters,
       orderBy("clientAtMs", "desc"),
       limit(50)
     );
@@ -395,7 +414,7 @@ export default function JudgePage() {
     );
 
     return () => unsubscribe();
-  }, [selectedComp, selectedRoute, round]);
+  }, [selectedComp, selectedRoute, round, selectedDetail, details]);
 
   const handleNextDetail = () => {
     if (!details.length) return;
