@@ -682,7 +682,7 @@ export default function JudgePage() {
     // Vibrate once at 10 seconds mark
     if (timerSeconds === 10) {
       if (navigator.vibrate) {
-        navigator.vibrate(100);
+        navigator.vibrate(200);
       }
     }
 
