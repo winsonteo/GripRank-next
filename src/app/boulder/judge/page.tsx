@@ -702,8 +702,8 @@ export default function JudgePage() {
       <main className="py-12 text-foreground bg-background min-h-screen">
         <Container className="space-y-8">
         {/* Header */}
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
             <Link href="/" className="inline-block">
               <Image
                 src="/logo_header.png"
@@ -716,10 +716,11 @@ export default function JudgePage() {
             </Link>
             <span className="text-muted-foreground">Judge Console</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span className="hidden sm:inline text-sm text-muted-foreground truncate max-w-[200px]">
               {user?.emailAddresses[0]?.emailAddress}
             </span>
+            <span className="sm:hidden text-xs text-muted-foreground">Signed in</span>
             <UserButton afterSignOutUrl="/" />
           </div>
         </header>
