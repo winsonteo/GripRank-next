@@ -1325,12 +1325,31 @@ export default function JudgePage() {
         )}
 
         {/* Confirmation Dialog */}
-        {showConfirmDialog && (
+        {showConfirmDialog && pendingChange && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-              <h3 className="text-2xl font-bold mb-4 text-gray-900">Confirm Station Change</h3>
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to change the judge station settings? This will affect which attempts are recorded.
+              <h3 className="text-2xl font-bold mb-4 text-gray-900">Confirm Change</h3>
+              <p className="text-gray-700 mb-6 text-lg">
+                {(() => {
+                  const getLabel = () => {
+                    switch (pendingChange.type) {
+                      case 'comp':
+                        return competitions.find(c => c.id === pendingChange.value)?.name || pendingChange.value;
+                      case 'category':
+                        return categories.find(c => c.id === pendingChange.value)?.name || pendingChange.value;
+                      case 'round':
+                        return pendingChange.value === 'final' ? 'Final' : 'Qualification';
+                      case 'route':
+                        return routes.find(r => r.id === pendingChange.value)?.label || pendingChange.value;
+                      case 'detail':
+                        const detail = details.find(d => d.id === pendingChange.value);
+                        return detail?.label || detail?.detailIndex || pendingChange.value;
+                      default:
+                        return pendingChange.value;
+                    }
+                  };
+                  return `Switch to ${getLabel()}?`;
+                })()}
               </p>
               <div className="flex gap-3">
                 <button
