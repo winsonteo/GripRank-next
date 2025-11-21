@@ -183,6 +183,105 @@ Judge pages support **offline scoring** with:
 - Client-side timestamps (`clientAtMs`) for ordering
 - QR code scanning (BarcodeDetector API + jsQR fallback)
 
+### Judge List - Aggregated Attempts View
+
+**Implementation migrated from old GripRank (HTML/JS version).**
+
+The Judge List shows **one row per athlete** with all attempts aggregated:
+
+```typescript
+// Pattern: Aggregate attempts chronologically by athlete
+const chronological = [...attempts].sort((a, b) =>
+  (a.clientAtMs || 0) - (b.clientAtMs || 0)
+);
+
+const aggregated = new Map<string, string[]>();
+chronological.forEach((att) => {
+  if (!aggregated.has(att.athleteId)) {
+    aggregated.set(att.athleteId, []);
+  }
+  if (att.symbol) {
+    aggregated.get(att.athleteId)!.push(att.symbol);
+  }
+});
+
+// Display: sequence.join('') → "1Z1T" (attempt, zone, attempt, top)
+```
+
+**Table columns:**
+- **Bib**: Athlete bib number (fixed width)
+- **Athlete**: Name only, no team (truncated on mobile)
+- **Attempts**: Sequence string in monospace font (gets remaining space)
+
+**Query filters (CRITICAL):**
+```typescript
+const filters = [
+  where("categoryId", "==", selectedCategory),  // Filter by category
+  where("routeId", "==", selectedRoute),        // Filter by route
+  where("round", "==", round)                   // qualification or final
+];
+
+// For qualification rounds only
+if (round === "qualification" && selectedDetail) {
+  filters.push(where("detailIndex", "==", detailIndexToMatch));
+}
+```
+
+**Mobile responsiveness:**
+- Small padding on mobile: `px-2` vs desktop `px-3`
+- Truncated names: `max-w-[84px]` mobile, `max-w-[140px]` desktop
+- Attempts column gets maximum space (no width restrictions)
+
+### Judge Page Safety Features
+
+**1. Auto-Unselect After Save**
+```typescript
+// After saving attempt
+setSelectedAthlete(null);  // Force explicit selection before next save
+setSelectedSymbol(null);
+```
+Prevents accidental duplicate entries for the same climber.
+
+**2. Station Change Confirmations**
+
+When judges change any station setting (competition, category, round, route, detail), a confirmation dialog appears:
+
+```typescript
+const handleStationChange = (type, value) => {
+  // Skip for initial auto-selections
+  if (isInitialSelection || !currentValue) {
+    applyStationChange(type, value);
+    return;
+  }
+
+  // Show confirmation for manual changes
+  setPendingChange({ type, value });
+  setShowConfirmDialog(true);
+};
+```
+
+**Dialog shows contextual message:**
+- "Switch to Youth E Girls?" (category change)
+- "Switch to Final?" (round change)
+- "Switch to Boulder 3?" (route change)
+
+**3. Timer Vibration Feedback**
+
+Uses Vibration API for tactile feedback:
+```typescript
+// At 10 seconds: single 200ms pulse
+if (timerSeconds === 10) {
+  navigator.vibrate(200);
+}
+
+// At expiration: pattern (200ms, pause 100ms, 200ms)
+if (timerSeconds === 0 && !timerRunning) {
+  navigator.vibrate([200, 100, 200]);
+}
+```
+
+Allows judges to focus on climber without watching timer.
+
 ---
 
 ## Code Organization
@@ -279,11 +378,18 @@ CONTACT_TO=contact@griprank.com
   - Clear feedback after saving scores
   - Data loss prevention
 
+**Safety features implemented:**
+- ✅ Auto-unselect athlete after saving attempt (prevents duplicate entries)
+- ✅ Confirmation dialogs for station changes (prevents wrong category/route)
+- ✅ Timer vibration feedback (reduces need to watch screen)
+- ✅ Mobile-friendly judge list (no horizontal scrolling)
+
 **Files requiring extra care:**
 - `src/app/boulder/**` (judge pages, leaderboards)
 - `src/lib/boulder/scoring.ts` (scoring logic)
 - `firestore.rules` (security rules)
 - Any real-time listener code (`onSnapshot`)
+- Judge List aggregation logic (must match old implementation)
 
 ### Load Testing
 
@@ -369,6 +475,86 @@ export default function LiveData() {
    ```bash
    npx firebase deploy --only firestore:rules --project climbing-scoring-app-v1
    ```
+
+### Judge List Aggregation Pattern
+
+When displaying attempt history aggregated by athlete:
+
+```typescript
+// 1. Sort attempts chronologically
+const chronological = [...attempts].sort((a, b) =>
+  (a.clientAtMs || 0) - (b.clientAtMs || 0)
+);
+
+// 2. Aggregate by athlete
+const aggregated = new Map<string, string[]>();
+chronological.forEach((att) => {
+  if (!aggregated.has(att.athleteId)) {
+    aggregated.set(att.athleteId, []);
+  }
+  if (att.symbol) {
+    aggregated.get(att.athleteId)!.push(att.symbol);
+  }
+});
+
+// 3. Build athlete rows with sequences
+const athleteRows = athletes
+  .filter((ath) => aggregated.has(ath.id))
+  .map((ath) => ({
+    bib: ath.bib,
+    name: ath.name,
+    sequence: aggregated.get(ath.id)!.join('') // "1Z1T"
+  }));
+```
+
+**Required Firestore indexes for attempts queries:**
+- Qualification: `categoryId → routeId → round → detailIndex → clientAtMs (DESC)`
+- Finals: `categoryId → routeId → round → clientAtMs (DESC)`
+
+### Confirmation Dialog Pattern
+
+For critical user actions that should require confirmation:
+
+```typescript
+// 1. Add state for dialog and pending action
+const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+const [pendingChange, setPendingChange] = useState<{
+  type: string;
+  value: string;
+} | null>(null);
+
+// 2. Handle action with confirmation
+const handleAction = (type: string, value: string) => {
+  // Skip confirmation for initial state or no change
+  if (!currentValue || value === currentValue) {
+    applyAction(type, value);
+    return;
+  }
+
+  // Show confirmation
+  setPendingChange({ type, value });
+  setShowConfirmDialog(true);
+};
+
+// 3. Confirm or cancel
+const handleConfirm = () => {
+  if (pendingChange) {
+    applyAction(pendingChange.type, pendingChange.value);
+  }
+  setShowConfirmDialog(false);
+  setPendingChange(null);
+};
+
+const handleCancel = () => {
+  setShowConfirmDialog(false);
+  setPendingChange(null);
+};
+```
+
+**Use cases:**
+- Changing judge station settings (comp/category/route/detail)
+- Deleting important data
+- Switching modes that affect data entry
 
 ---
 
