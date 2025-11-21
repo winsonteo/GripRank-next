@@ -47,9 +47,19 @@ function getAdminApp(): App {
   const validatedPrivateKey = privateKey!;
 
   // Validate private key format
+  // The private key must be a PEM-formatted RSA key from Firebase service account JSON
+  // Expected format: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+  //
+  // COMMON ISSUE: If this check fails, verify that:
+  // 1. You're using the full key from the service account JSON (including headers/footers)
+  // 2. The key contains literal \n characters (which get replaced below) OR actual newlines
+  // 3. In Vercel/production, the key is wrapped in quotes if it contains newlines
+  //
+  // Example: FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
   if (!validatedPrivateKey.includes('BEGIN PRIVATE KEY')) {
     const errorMsg = 'FIREBASE_ADMIN_PRIVATE_KEY is not in correct format (missing BEGIN PRIVATE KEY)';
     console.error('[Firebase Admin] ' + errorMsg);
+    console.error('[Firebase Admin] Key preview (first 50 chars):', validatedPrivateKey.substring(0, 50));
     throw new Error(errorMsg);
   }
 

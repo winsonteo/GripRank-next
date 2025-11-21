@@ -2,6 +2,32 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin';
 
+/**
+ * Firebase Custom Token Endpoint
+ *
+ * This endpoint bridges Clerk authentication with Firebase by:
+ * 1. Verifying the user's Clerk session
+ * 2. Looking up their role from Firestore
+ * 3. Minting a Firebase custom token with role claims
+ *
+ * SECURITY CONTRACT:
+ * - Server logs are detailed (step name, errors, stack traces) for debugging
+ * - Client responses are ALWAYS generic (no stack traces, no internal error details)
+ * - No sensitive data (secrets, env vars, internal paths) ever reaches the client
+ *
+ * DEBUGGING IN PRODUCTION:
+ * When this endpoint returns a 500 error, check your Vercel/server logs for:
+ * - "[Firebase Token] Step X:" - Shows which step failed (1-5)
+ * - "[Firebase Token] Clerk auth failed" - Clerk session invalid/expired
+ * - "[Firebase Token] Failed to initialize Admin DB" - Firebase Admin SDK env vars missing/malformed
+ * - "[Firebase Token] Firestore query failed" - Network or permissions issue
+ * - "[Firebase Token] Failed to initialize Admin Auth" - Firebase Admin SDK issue
+ * - "[Firebase Token] Custom token creation failed" - Token minting failure (check service account permissions)
+ * - "[Firebase Admin] Missing Firebase Admin SDK environment variables" - Check FIREBASE_ADMIN_* env vars
+ * - "[Firebase Admin] FIREBASE_ADMIN_PRIVATE_KEY is not in correct format" - Key needs proper newlines
+ *
+ * The client will only see: { error: "Internal error", code: "FIREBASE_TOKEN_ERROR" }
+ */
 export async function GET() {
   try {
     // Step 1: Verify Clerk session
@@ -12,9 +38,11 @@ export async function GET() {
       const authResult = await auth();
       userId = authResult.userId;
     } catch (clerkError) {
+      // Log detailed error server-side for debugging
       console.error('[Firebase Token] Clerk auth failed:', clerkError);
+      // Return generic error to client (don't leak Clerk internals)
       return NextResponse.json(
-        { error: 'Clerk authentication failed', details: String(clerkError) },
+        { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
       );
     }
@@ -22,7 +50,7 @@ export async function GET() {
     if (!userId) {
       console.warn('[Firebase Token] No Clerk user ID found');
       return NextResponse.json(
-        { error: 'Unauthorized - No Clerk session' },
+        { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
       );
     }
@@ -35,9 +63,11 @@ export async function GET() {
     try {
       adminDb = getAdminDb();
     } catch (dbError) {
+      // Log full error details server-side (stack trace, env var issues, etc.)
       console.error('[Firebase Token] Failed to initialize Admin DB:', dbError);
+      // Client gets generic error only (no internal details)
       return NextResponse.json(
-        { error: 'Firebase Admin DB initialization failed', details: String(dbError) },
+        { error: 'Internal error', code: 'FIREBASE_TOKEN_ERROR' },
         { status: 500 }
       );
     }
@@ -48,9 +78,11 @@ export async function GET() {
     try {
       roleDoc = await adminDb.collection('roles').doc(userId).get();
     } catch (firestoreError) {
+      // Log Firestore-specific errors (network, permissions, etc.)
       console.error('[Firebase Token] Firestore query failed:', firestoreError);
+      // Client gets generic error (don't expose Firestore structure)
       return NextResponse.json(
-        { error: 'Firestore role lookup failed', details: String(firestoreError) },
+        { error: 'Internal error', code: 'FIREBASE_TOKEN_ERROR' },
         { status: 500 }
       );
     }
@@ -68,9 +100,11 @@ export async function GET() {
     try {
       adminAuth = getAdminAuth();
     } catch (authError) {
+      // Log admin auth errors (credentials, initialization issues)
       console.error('[Firebase Token] Failed to initialize Admin Auth:', authError);
+      // Generic error to client
       return NextResponse.json(
-        { error: 'Firebase Admin Auth initialization failed', details: String(authError) },
+        { error: 'Internal error', code: 'FIREBASE_TOKEN_ERROR' },
         { status: 500 }
       );
     }
@@ -84,9 +118,11 @@ export async function GET() {
         clerkId: userId,
       });
     } catch (tokenError) {
+      // Log token creation errors (service account permissions, quota limits, etc.)
       console.error('[Firebase Token] Custom token creation failed:', tokenError);
+      // Generic error to client
       return NextResponse.json(
-        { error: 'Custom token creation failed', details: String(tokenError) },
+        { error: 'Internal error', code: 'FIREBASE_TOKEN_ERROR' },
         { status: 500 }
       );
     }
@@ -97,14 +133,15 @@ export async function GET() {
       role,
     });
   } catch (error) {
-    // Catch-all for unexpected errors
+    // Catch-all for unexpected errors outside the step handlers
+    // This should rarely happen, but ensures we never expose internal details
     console.error('[Firebase Token] Unexpected error:', error);
+    console.error('[Firebase Token] Stack trace:', error instanceof Error ? error.stack : 'No stack');
+
+    // SECURITY: Never send stack traces or internal error messages to client
+    // The detailed logs above are only visible in server logs (Vercel, etc.)
     return NextResponse.json(
-      {
-        error: 'Unexpected error creating Firebase token',
-        details: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
+      { error: 'Internal error', code: 'FIREBASE_TOKEN_ERROR' },
       { status: 500 }
     );
   }

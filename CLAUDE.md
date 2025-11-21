@@ -362,6 +362,48 @@ CONTACT_TO=contact@griprank.com
 
 **Production:** Set these in Vercel project settings.
 
+### Firebase Admin Private Key Format
+
+The `FIREBASE_ADMIN_PRIVATE_KEY` must be a PEM-formatted RSA private key from your Firebase service account JSON.
+
+**Expected format:**
+```bash
+FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhk...\n-----END PRIVATE KEY-----\n"
+```
+
+**Key requirements:**
+1. Must include the full key from service account JSON (with `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` markers)
+2. Can contain either:
+   - Literal `\n` escape sequences (recommended for Vercel/production)
+   - Actual newline characters (common in local `.env.local`)
+3. Must be wrapped in quotes if it contains newlines or special characters
+
+**Getting the key:**
+1. Go to [Firebase Console](https://console.firebase.google.com) → Project Settings → Service Accounts
+2. Click "Generate New Private Key"
+3. Open the downloaded JSON file
+4. Copy the entire `private_key` value (including `-----BEGIN...` and `-----END...`)
+5. For Vercel: Keep the `\n` characters as-is
+6. For local `.env.local`: You can use the format shown in the example above
+
+**Troubleshooting:**
+
+If you see errors like:
+- `Missing Firebase Admin SDK environment variables: FIREBASE_ADMIN_PRIVATE_KEY`
+- `FIREBASE_ADMIN_PRIVATE_KEY is not in correct format (missing BEGIN PRIVATE KEY)`
+
+Check Vercel logs for:
+```
+[Firebase Admin] Missing Firebase Admin SDK environment variables: ...
+[Firebase Admin] FIREBASE_ADMIN_PRIVATE_KEY is not in correct format
+[Firebase Admin] Key preview (first 50 chars): ...
+```
+
+Common fixes:
+- Ensure the key is wrapped in quotes in Vercel environment settings
+- Verify you copied the entire key including headers and footers
+- Check that `\n` characters weren't accidentally removed or converted
+
 ---
 
 ## Critical Domain Rules
@@ -568,6 +610,133 @@ npx firebase deploy --only firestore:rules --project climbing-scoring-app-v1
 npx firebase deploy --only firestore:indexes --project climbing-scoring-app-v1
 ```
 
+---
+
+## Auth & Firestore Rules Design Contract (GripRank)
+
+This section defines the non-negotiable rules for authentication and Firestore access in GripRank. Any future changes to auth, hooks, or rules must respect this contract.
+
+⸻
+
+1. High-Level Architecture
+	•	Clerk is the only source of truth for user identity and roles.
+	•	Firebase is a resource server:
+	•	Firestore stores competitions, attempts, gyms, etc.
+	•	Firebase Auth is used only so Firestore rules can evaluate request.auth and custom claims.
+	•	Frontend code must never decide final access; it can only:
+	•	Ask Clerk who the user is.
+	•	Ask Firebase/Firestore to perform an action.
+	•	Rely on Firestore rules to allow/deny writes.
+
+⸻
+
+2. Identity & Roles
+	•	Firebase UID must always be the Clerk user ID.
+	•	Custom token: uid = clerkUserId.
+	•	Firebase custom claims must include:
+	•	role: "viewer" | "judge" | "staff" | "admin".
+	•	Future-ready: ability to add gym context, e.g. gymId or gymRoles.
+	•	Roles must come from a trusted backend source:
+	•	Current: Firestore roles/{userId}.
+	•	Future: Clerk public/ private metadata.
+	•	Do not accept user ID or role from any client parameter.
+
+⸻
+
+3. Token Endpoint Contract (/api/auth/firebase-token)
+
+Responsibilities:
+	1.	Verify Clerk session server-side (using Clerk server SDK).
+	2.	Look up user role from a backend source (Firestore or Clerk metadata).
+	3.	Mint a Firebase custom token with:
+	•	uid = clerkUserId
+	•	Claims: at least role, optional gymId etc.
+	4.	Return { token } to the client.
+
+Hard rules:
+	•	No firebase-admin usage in client bundles.
+	•	Do not trust any user ID or role provided by the client.
+	•	On failure:
+	•	Log detailed info on the server (step name, error, stack).
+	•	Return a generic JSON error to the client (no stack traces, no secrets).
+
+⸻
+
+4. Client Auth Sync Contract (useFirebaseAuth and similar)
+
+The Clerk ↔ Firebase sync layer (hook/provider) must enforce these invariants:
+	1.	Single source of identity
+	•	If Clerk is signed out → Firebase must be signed out.
+	•	If Clerk is signed in as user X → Firebase must also be user X.
+	•	There must never be a Firebase user when Clerk has no user.
+	2.	User switch ordering
+	•	When Clerk changes from A → B:
+	•	Firebase must sign out A before signing in B.
+	•	Any in-flight token fetch for A must be cancelled/ignored once B is active.
+	3.	Concurrency control
+	•	At most one in-flight request to /api/auth/firebase-token per user.
+	•	No parallel signInWithCustomToken calls for the same user.
+	•	Effects must not spam new token requests on minor state “jitter”.
+	4.	Error handling
+	•	If token fetch or sign-in fails:
+	•	Surface a clear error state for the UI.
+	•	Do not leave Firebase authenticated as the wrong user.
+	•	Prefer “no Firebase user” over “stale Firebase user”.
+
+Any hook or provider that changes auth behaviour must explain in comments how it satisfies these invariants.
+
+⸻
+
+5. Firestore Rules Contract
+
+Principles:
+	•	All writes to sensitive collections (attempts, comps, admin docs) require:
+	•	request.auth != null
+	•	Appropriate role in request.auth.token.role.
+	•	Public read access is allowed only on explicitly public data (e.g. published results/leaderboards).
+
+Patterns:
+	•	Use helper functions like:
+	•	isSignedIn()
+	•	hasRole(list)
+	•	Future: isGymMember(gymId) / hasGymRole(gymId, role)
+	•	Do not use client-controlled document fields (e.g. doc.role, doc.userId) to decide access.
+	•	All authorisation decisions must be based on request.auth and claims.
+
+Multi-gym preparation:
+	•	Where possible, structure rules so they can later be nested under /gyms/{gymId}/… and use a gymId claim to enforce isolation.
+
+⸻
+
+6. Auth & Rules Regression Checklist
+
+Whenever you change any of:
+	•	/api/auth/firebase-token
+	•	Firebase Admin bootstrap
+	•	useFirebaseAuth (or equivalent sync code)
+	•	Firestore security rules
+
+You must re-test these flows:
+	1.	Judge normal login
+	•	Sign in via Clerk as a judge.
+	•	Ensure:
+	•	Token endpoint returns a token.
+	•	Firebase shows a user whose UID matches Clerk.
+	•	Judge can create/update attempts successfully.
+	2.	Sign-out
+	•	Sign out in Clerk.
+	•	Ensure:
+	•	Firebase signs out.
+	•	Attempt writes are rejected by rules.
+	3.	Fast user switch on same device
+	•	Sign in as Judge A → log an attempt.
+	•	Switch to Judge B quickly → log an attempt.
+	•	Ensure:
+	•	Firebase UID matches the current Clerk user at all times.
+	•	Attempts after the switch are attributed to B.
+	•	No intermittent 500s or random unauthorised errors.
+
+If any of these fail, the change does not meet this contract and must be fixed or reverted.
 ---
 
 ## Additional Resources

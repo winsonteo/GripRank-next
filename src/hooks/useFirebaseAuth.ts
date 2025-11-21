@@ -43,9 +43,25 @@ export function useFirebaseAuth() {
         const response = await fetch('/api/auth/firebase-token');
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          const errorMsg = `Failed to get Firebase token: ${response.status} - ${errorData.error || 'Unknown error'}`;
-          console.error('❌ Token fetch error details:', errorData);
+          // Server returns generic errors for security
+          // Detailed diagnostics are in server logs only
+          const errorData = await response.json().catch(() => ({
+            error: 'Unknown error',
+            code: 'UNKNOWN'
+          }));
+
+          // Log the error code for client-side debugging
+          console.error('❌ Token fetch failed:', {
+            status: response.status,
+            code: errorData.code,
+            error: errorData.error,
+          });
+
+          // Construct user-friendly error message
+          const errorMsg = response.status === 401
+            ? 'Authentication required. Please sign in again.'
+            : 'Failed to authenticate with Firebase. Please try again.';
+
           throw new Error(errorMsg);
         }
 
