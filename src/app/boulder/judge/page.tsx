@@ -886,7 +886,7 @@ export default function JudgePage() {
           )}
 
           {rosterExpanded && (
-            <div className="min-h-[100px] max-h-[260px] overflow-y-auto">
+            <div className="min-h-[50px] max-h-[130px] overflow-y-auto">
               {athletesLoading ? (
                 <div className="text-muted-foreground text-center py-8">
                   Loading athletes...
