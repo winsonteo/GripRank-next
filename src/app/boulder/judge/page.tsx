@@ -1107,8 +1107,8 @@ export default function JudgePage() {
                   <table className="w-full text-sm">
                     <thead className="border-b border-border">
                       <tr className="text-left">
-                        <th className="py-2 px-2 sm:px-3 font-medium text-muted-foreground w-16 sm:w-20">Bib</th>
-                        <th className="py-2 px-2 sm:px-3 font-medium text-muted-foreground">Athlete</th>
+                        <th className="py-2 px-2 sm:px-3 font-medium text-muted-foreground w-12 sm:w-16">Bib</th>
+                        <th className="py-2 px-2 sm:px-3 font-medium text-muted-foreground w-20 sm:w-28">Athlete</th>
                         <th className="py-2 px-2 sm:px-3 font-medium text-muted-foreground">Attempts</th>
                       </tr>
                     </thead>
@@ -1159,7 +1159,7 @@ export default function JudgePage() {
                         return athleteRows.map((row) => (
                           <tr key={row.bib} className="border-b border-border hover:bg-input/50">
                             <td className="py-2 px-2 sm:px-3 font-semibold text-xs sm:text-sm">#{row.bib}</td>
-                            <td className="py-2 px-2 sm:px-3 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">
+                            <td className="py-2 px-2 sm:px-3 text-xs sm:text-sm truncate max-w-[84px] sm:max-w-[140px]">
                               {row.name}
                             </td>
                             <td className="py-2 px-2 sm:px-3 font-mono text-sm sm:text-base font-semibold">
