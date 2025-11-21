@@ -675,6 +675,27 @@ export default function JudgePage() {
     return () => clearInterval(interval);
   }, [timerRunning]);
 
+  // Timer vibration feedback
+  useEffect(() => {
+    if (!timerRunning) return;
+
+    // Vibrate during last 10 seconds
+    if (timerSeconds > 0 && timerSeconds <= 10) {
+      // Short pulse for countdown
+      if (navigator.vibrate) {
+        navigator.vibrate(100);
+      }
+    }
+
+    // Strong vibration when timer expires
+    if (timerSeconds === 0 && !timerRunning) {
+      if (navigator.vibrate) {
+        // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
+        navigator.vibrate([200, 100, 200]);
+      }
+    }
+  }, [timerSeconds, timerRunning]);
+
   // Update timer display
   useEffect(() => {
     const minutes = Math.floor(timerSeconds / 60);
