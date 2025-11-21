@@ -2,12 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
-    function userHasRole(roles) {
+    // Check role from custom token claim (no Firestore lookup needed)
+    function hasRole(role) {
       return request.auth != null &&
-             get(/databases/$(db)/documents/roles/$(request.auth.uid)).data.role in roles;
+             request.auth.token.role == role;
     }
-    function isAdminOrStaff() { return userHasRole(['staff','admin']); }
-    function isJudge()        { return userHasRole(['judge']); }
+
+    function hasAnyRole(roles) {
+      return request.auth != null &&
+             request.auth.token.role in roles;
+    }
+
+    function isAdminOrStaff() { return hasAnyRole(['staff', 'admin']); }
+    function isJudge()        { return hasAnyRole(['judge', 'staff', 'admin']); }
 
     /* ================= BOULDER (boulderComps) ================= */
     match /boulderComps/{compId} {
