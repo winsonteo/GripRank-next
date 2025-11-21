@@ -43,7 +43,10 @@ export function useFirebaseAuth() {
         const response = await fetch('/api/auth/firebase-token');
 
         if (!response.ok) {
-          throw new Error(`Failed to get Firebase token: ${response.status}`);
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          const errorMsg = `Failed to get Firebase token: ${response.status} - ${errorData.error || 'Unknown error'}`;
+          console.error('❌ Token fetch error details:', errorData);
+          throw new Error(errorMsg);
         }
 
         const data = await response.json();
