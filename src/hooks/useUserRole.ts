@@ -110,3 +110,13 @@ export function useUserRole() {
 export function isJudgeRole(role: UserRole | null): boolean {
   return role === 'judge' || role === 'staff' || role === 'admin';
 }
+
+/**
+ * Helper: Check if a role is allowed for chief judge / staff pages
+ *
+ * ALLOWED ROLES: staff, admin
+ * DENIED ROLES: viewer, judge, null (not signed in)
+ */
+export function isStaffRole(role: UserRole | null): boolean {
+  return role === 'staff' || role === 'admin';
+}

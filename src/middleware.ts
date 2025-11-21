@@ -4,6 +4,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 const isProtectedRoute = createRouteMatcher([
   '/judge(.*)',
   '/boulder/judge(.*)',
+  '/boulder/setup(.*)',
   '/lead/judge(.*)',
   '/speed/judge(.*)',
   '/admin(.*)',
