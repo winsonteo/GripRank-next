@@ -106,6 +106,9 @@ function initPersistence(db: Firestore) {
   firebaseGlobal.__FIREBASE_PERSISTENCE_PROMISE__ = persistencePromise;
 }
 
+// Emulator connection function (currently disabled, see CLAUDE.md)
+// To re-enable: uncomment the call to this function in the initialization code
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function connectEmulators(authInstance: Auth, firestoreInstance: Firestore) {
   if (window.location.hostname !== "localhost") return;
   const firebaseGlobal = globalThis as FirebaseGlobal;
