@@ -1056,7 +1056,7 @@ function ChiefJudgeInterface() {
                             idx % 2 === 1 ? 'bg-white/[0.025]' : 'bg-white/[0.015]'
                           } ${
                             selectedAthleteId === athlete.id
-                              ? 'bg-[#27a9e1]/25 shadow-[inset_4px_0_0_0_rgba(39,169,225,0.95)] font-semibold'
+                              ? 'bg-[#27a9e1]/20 shadow-[inset_4px_0_0_0_rgba(39,169,225,0.95)] font-semibold ring-2 ring-[#27a9e1] ring-offset-0 ring-offset-transparent'
                               : ''
                           }`}
                         >
