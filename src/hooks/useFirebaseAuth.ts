@@ -44,6 +44,8 @@ export function useFirebaseAuth() {
       // Check if Firebase Auth is available
       if (!firebaseAuth) {
         console.warn('Firebase Auth not initialized');
+        setError('firebase-not-initialized');
+        setIsFirebaseAuthenticated(false);
         return;
       }
 

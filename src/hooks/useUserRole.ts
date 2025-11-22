@@ -70,10 +70,8 @@ export function useUserRole() {
         // No Firebase user yet, but Clerk is signed in
         // This means useFirebaseAuth is still in progress
         // Keep loading=true to prevent premature "access denied"
-        console.log('[useUserRole] No Firebase user yet');
         setRole(null);
-        // Note: We DON'T set loading=false here!
-        // The parent component uses isFirebaseAuthenticated to determine when Firebase auth is done
+        setLoading(false);
         return;
       }
 

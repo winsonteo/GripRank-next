@@ -76,11 +76,14 @@ export function useChiefJudgeAttempts(
   categoryId: string,
   round: 'qualification' | 'final',
   routeId: string,
-  detailIndex?: string
+  detailIndex?: number | null
 ) {
   const [athletes, setAthletes] = useState<AthleteWithAttempts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const normalizedDetailIndex =
+    detailIndex == null || detailIndex === '' ? null : Number(detailIndex);
 
   useEffect(() => {
     // Reset state when parameters change
@@ -95,6 +98,7 @@ export function useChiefJudgeAttempts(
     }
 
     let unsubscribeAttempts: (() => void) | null = null;
+    let isActive = true;
 
     async function fetchData() {
       try {
@@ -103,8 +107,8 @@ export function useChiefJudgeAttempts(
         const athleteFilters = [where('categoryId', '==', categoryId)];
 
         // For qualification rounds, filter by detailIndex
-        if (round === 'qualification' && detailIndex) {
-          athleteFilters.push(where('detailIndex', '==', detailIndex));
+        if (round === 'qualification' && normalizedDetailIndex !== null) {
+          athleteFilters.push(where('detailIndex', '==', normalizedDetailIndex));
         }
 
         const athletesQuery = query(athletesRef, ...athleteFilters);
@@ -131,8 +135,8 @@ export function useChiefJudgeAttempts(
         }
 
         // For qualification rounds, filter by detailIndex
-        if (round === 'qualification' && detailIndex) {
-          attemptFilters.push(where('detailIndex', '==', detailIndex));
+        if (round === 'qualification' && normalizedDetailIndex !== null) {
+          attemptFilters.push(where('detailIndex', '==', normalizedDetailIndex));
         }
 
         const attemptsQuery = query(
@@ -142,9 +146,10 @@ export function useChiefJudgeAttempts(
         );
 
         // Subscribe to real-time updates
-        unsubscribeAttempts = onSnapshot(
+        const attemptsUnsubscribe = onSnapshot(
           attemptsQuery,
           (snapshot) => {
+            if (!isActive) return;
             // Aggregate attempts by athlete (and route if showing all routes)
             const attemptsByAthlete = new Map<string, string[]>();
 
@@ -216,6 +221,10 @@ export function useChiefJudgeAttempts(
             setLoading(false);
           }
         );
+        unsubscribeAttempts = attemptsUnsubscribe;
+        if (!isActive) {
+          attemptsUnsubscribe();
+        }
 
       } catch (err) {
         console.error('Error fetching chief judge data:', err);
@@ -228,11 +237,12 @@ export function useChiefJudgeAttempts(
 
     // Cleanup subscription on unmount or parameter change
     return () => {
+      isActive = false;
       if (unsubscribeAttempts) {
         unsubscribeAttempts();
       }
     };
-  }, [compId, categoryId, round, routeId, detailIndex]);
+  }, [compId, categoryId, round, routeId, normalizedDetailIndex]);
 
   return { athletes, loading, error };
 }

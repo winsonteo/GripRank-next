@@ -198,6 +198,8 @@ function ChiefJudgeInterface() {
   // Add attempt state
   const [newAttemptSymbol, setNewAttemptSymbol] = useState<string>('1');
   const [addingAttempt, setAddingAttempt] = useState(false);
+  const [editingDetailIndex, setEditingDetailIndex] = useState<number | null>(null);
+  const [editingDetailLabel, setEditingDetailLabel] = useState<string | null>(null);
 
   // Undo state
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
@@ -206,10 +208,24 @@ function ChiefJudgeInterface() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
-  // Get detail index for filtering
-  const detailIndexToMatch = selectedDetail
-    ? details.find((d) => d.id === selectedDetail)?.detailIndex || ''
-    : '';
+  // Get detail index for filtering (normalize to number or null)
+  const rawDetailIndex = selectedDetail
+    ? details.find((d) => d.id === selectedDetail)?.detailIndex ?? null
+    : null;
+  const detailIndexNumber =
+    rawDetailIndex == null || rawDetailIndex === '' ? null : Number(rawDetailIndex);
+
+  // Reset dependent selections when competition or category changes to avoid stale filters
+  useEffect(() => {
+    setSelectedCategory('');
+    setSelectedRoute('');
+    setSelectedDetail('');
+  }, [selectedComp]);
+
+  useEffect(() => {
+    setSelectedRoute('');
+    setSelectedDetail('');
+  }, [selectedCategory]);
 
   // Fetch aggregated attempts using custom hook
   // Pass empty string for routeId when "All Boulders" is selected
@@ -222,7 +238,7 @@ function ChiefJudgeInterface() {
     selectedCategory,
     round,
     selectedRoute, // Empty string = All Boulders
-    round === 'qualification' ? detailIndexToMatch : undefined
+    round === 'qualification' ? detailIndexNumber : null
   );
 
   // Calculate route summary
@@ -506,16 +522,16 @@ function ChiefJudgeInterface() {
   };
 
   // Open edit panel for an athlete
-  const openEditPanel = async (athleteId: string) => {
+  const openEditPanel = async (rowId: string) => {
     if (!selectedComp || !firestore) return;
 
     // Extract actual athleteId and routeId from composite key (for "All Boulders")
-    let actualAthleteId = athleteId;
+    let actualAthleteId = rowId;
     let routeIdToEdit = selectedRoute;
 
-    if (!selectedRoute && athleteId.includes('_')) {
+    if (!selectedRoute && rowId.includes('_')) {
       // Format is "athleteId_routeId"
-      const [ath, route] = athleteId.split('_');
+      const [ath, route] = rowId.split('_');
       actualAthleteId = ath;
       routeIdToEdit = route;
     }
@@ -525,8 +541,42 @@ function ChiefJudgeInterface() {
       return;
     }
 
-    setSelectedAthleteId(athleteId); // Keep composite key for highlighting
+    // Look up detailIndex from athlete doc (row context) to anchor edits even in All Details view
+    let detailIndexForEdit: number | null = null;
+    if (round === 'qualification') {
+      try {
+        const athleteRef = doc(firestore, `boulderComps/${selectedComp}/athletes/${actualAthleteId}`);
+        const athleteSnap = await getDoc(athleteRef);
+        const athleteData = athleteSnap.data();
+        const raw = athleteData?.detailIndex ?? athleteData?.detail ?? athleteData?.detailId ?? null;
+        const parsed = raw == null || raw === '' ? null : Number(raw);
+        detailIndexForEdit = Number.isNaN(parsed) ? null : parsed;
+      } catch (err) {
+        console.error('Failed to load athlete detailIndex for editing', err);
+      }
+
+      if (detailIndexForEdit === null) {
+        showToast('Cannot edit this row because it has no detail assigned.');
+        return;
+      }
+    }
+
+    // Derive detail label for edit header
+    if (round === 'qualification') {
+      const detailMatch = details.find((d) => {
+        const candidate = d.detailIndex ?? d.id;
+        const numeric = candidate == null || candidate === '' ? null : Number(candidate);
+        return numeric === detailIndexForEdit;
+      });
+      const derivedLabel = detailMatch?.label || (detailIndexForEdit != null ? `Detail ${detailIndexForEdit}` : null);
+      setEditingDetailLabel(derivedLabel);
+    } else {
+      setEditingDetailLabel(null);
+    }
+
+    setSelectedAthleteId(rowId); // Keep composite key for highlighting
     setEditingRouteId(routeIdToEdit); // Store for add attempt
+    setEditingDetailIndex(detailIndexForEdit);
     setEditPanelVisible(true);
 
     try {
@@ -538,10 +588,8 @@ function ChiefJudgeInterface() {
         where('round', '==', round),
       ];
 
-      if (round === 'qualification' && detailIndexToMatch) {
-        const parsed = Number(detailIndexToMatch);
-        const detailFilter = Number.isNaN(parsed) ? detailIndexToMatch : parsed;
-        constraints.push(where('detailIndex', '==', detailFilter));
+      if (round === 'qualification' && detailIndexForEdit !== null) {
+        constraints.push(where('detailIndex', '==', detailIndexForEdit));
       }
 
       const attemptsQuery = query(attemptsRef, ...constraints, orderBy('clientAtMs', 'asc'));
@@ -571,11 +619,17 @@ function ChiefJudgeInterface() {
     setAttemptHistory([]);
     setEditingRouteId('');
     setNewAttemptSymbol('1');
+    setEditingDetailIndex(null);
+    setEditingDetailLabel(null);
   };
 
   // Add new attempt
   const addNewAttempt = async () => {
     if (!selectedComp || !firestore || !selectedAthleteId || !editingRouteId) return;
+    if (round === 'qualification' && editingDetailIndex === null) {
+      showToast('Cannot add attempts because this row has no detail assigned.');
+      return;
+    }
 
     // Extract actual athleteId from composite key if needed
     const actualAthleteId = selectedAthleteId.includes('_')
@@ -603,9 +657,11 @@ function ChiefJudgeInterface() {
       };
 
       // Add detailIndex for qualification rounds
-      if (round === 'qualification' && detailIndexToMatch) {
-        const parsed = Number(detailIndexToMatch);
-        attemptData.detailIndex = Number.isNaN(parsed) ? detailIndexToMatch : parsed;
+      if (round === 'qualification' && editingDetailIndex !== null) {
+        // NOTE: We currently use numeric detailIndex for qualification logic and indexing.
+        // In future we may introduce a separate string detailCode/detailId (e.g. "A1") for
+        // flexible group labelling, but the numeric field remains the canonical key for now.
+        attemptData.detailIndex = editingDetailIndex;
       }
 
       const docRef = await addDoc(attemptsRef, attemptData);
@@ -708,7 +764,7 @@ function ChiefJudgeInterface() {
 
     try {
       if (lastAction.type === 'update') {
-        await setDoc(attemptRef, lastAction.before, { merge: false });
+        await setDoc(attemptRef, lastAction.before, { merge: true });
         showToast('Reverted changes.');
       } else if (lastAction.type === 'delete') {
         await setDoc(attemptRef, lastAction.before, { merge: true });
@@ -748,6 +804,11 @@ function ChiefJudgeInterface() {
 
   // Get selected athlete info for edit panel
   const selectedAthlete = athletes.find((a) => a.id === selectedAthleteId);
+  const selectedRouteLabel = routes.find((r) => r.id === editingRouteId)?.label || editingRouteId;
+  const editingDetailDisplay =
+    round === 'qualification' && editingDetailIndex != null
+      ? editingDetailLabel || `Detail ${editingDetailIndex}`
+      : null;
 
   return (
     <main className="py-6 min-h-screen bg-[#0b1220] text-gray-200">
@@ -993,7 +1054,11 @@ function ChiefJudgeInterface() {
                           onClick={() => openEditPanel(athlete.id)}
                           className={`border-b border-[#19bcd6]/50 hover:bg-[#27a9e1]/10 cursor-pointer transition-colors ${
                             idx % 2 === 1 ? 'bg-white/[0.02]' : ''
-                          } ${selectedAthleteId === athlete.id ? 'bg-[#27a9e1]/20' : ''}`}
+                          } ${
+                            selectedAthleteId === athlete.id
+                              ? 'bg-[#27a9e1]/15 shadow-[inset_3px_0_0_0_rgba(39,169,225,0.9)]'
+                              : ''
+                          }`}
                         >
                           {!selectedRoute && (
                             <td className="py-2.5 px-3 text-gray-300">{routeLabel}</td>
@@ -1041,8 +1106,18 @@ function ChiefJudgeInterface() {
                 <strong className="text-gray-100 text-lg">Edit Attempt</strong>
                 <span className="text-sm text-gray-400">Adjust the recorded result and save to fix mistakes</span>
               </div>
-              <div className="text-sm text-gray-400 mb-3">
-                Editing {routes.find((r) => r.id === editingRouteId)?.label || 'route'} for #{selectedAthlete?.bib} {selectedAthlete?.name}
+              <div className="mb-4 rounded-lg border border-[#27a9e1]/30 bg-[#0b1635] px-4 py-3">
+                <div className="text-sm text-gray-300 font-semibold">
+                  Route: <span className="text-white">{selectedRouteLabel || 'Unknown route'}</span>
+                </div>
+                <div className="text-sm text-gray-300">
+                  Athlete: <span className="text-white font-medium">#{selectedAthlete?.bib} {selectedAthlete?.name}</span>
+                </div>
+                {editingDetailDisplay && (
+                  <div className="text-sm text-gray-300">
+                    Detail: <span className="text-white font-medium">{editingDetailDisplay}</span>
+                  </div>
+                )}
               </div>
 
               {/* Add New Attempt */}

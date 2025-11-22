@@ -23,6 +23,28 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "round",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "detailIndex",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "clientAtMs",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "routeId",
           "order": "ASCENDING"
         },
