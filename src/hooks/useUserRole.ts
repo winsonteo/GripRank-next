@@ -71,8 +71,7 @@ export function useUserRole() {
         // This means useFirebaseAuth is still in progress
         // Keep loading=true to prevent premature "access denied"
         setRole(null);
-        // Note: We DON'T set loading=false here!
-        // The parent component uses isFirebaseAuthenticated to determine when Firebase auth is done
+        setLoading(false);
         return;
       }
 
@@ -80,14 +79,21 @@ export function useUserRole() {
         // Get the ID token result which contains custom claims
         const idTokenResult = await user.getIdTokenResult();
 
+        console.log('[useUserRole] Firebase token claims:', {
+          uid: user.uid,
+          claims: idTokenResult.claims,
+          role: idTokenResult.claims.role
+        });
+
         // Extract role from custom claims (set by /api/auth/firebase-token)
         // Default to 'viewer' if no role is set
         const userRole = (idTokenResult.claims.role as UserRole) || 'viewer';
 
+        console.log('[useUserRole] Resolved role:', userRole);
         setRole(userRole);
         setLoading(false);
       } catch (error) {
-        console.error('Error getting user role:', error);
+        console.error('[useUserRole] Error getting user role:', error);
         // On error, default to viewer (most restrictive)
         setRole('viewer');
         setLoading(false);
@@ -109,4 +115,14 @@ export function useUserRole() {
  */
 export function isJudgeRole(role: UserRole | null): boolean {
   return role === 'judge' || role === 'staff' || role === 'admin';
+}
+
+/**
+ * Helper: Check if a role is allowed for chief judge / staff pages
+ *
+ * ALLOWED ROLES: staff, admin
+ * DENIED ROLES: viewer, judge, null (not signed in)
+ */
+export function isStaffRole(role: UserRole | null): boolean {
+  return role === 'staff' || role === 'admin';
 }
