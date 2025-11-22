@@ -82,8 +82,7 @@ export function useChiefJudgeAttempts(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const normalizedDetailIndex =
-    detailIndex == null || detailIndex === '' ? null : Number(detailIndex);
+  const normalizedDetailIndex = detailIndex == null ? null : Number(detailIndex);
 
   useEffect(() => {
     // Reset state when parameters change
