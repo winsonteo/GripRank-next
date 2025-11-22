@@ -185,10 +185,6 @@ function ChiefJudgeInterface() {
   // Edit panel needs to track which route is being edited (for All Boulders mode)
   const [editingRouteId, setEditingRouteId] = useState<string>('');
 
-  // CRITICAL: Track the detailIndex for the athlete being edited
-  // For qualification rounds, this ensures all edits/adds use the correct detail
-  const [editingDetailIndex, setEditingDetailIndex] = useState<number | undefined>(undefined);
-
   // Leaderboard Note state
   const [leaderboardNote, setLeaderboardNote] = useState('');
   const [originalNote, setOriginalNote] = useState('');
@@ -556,16 +552,14 @@ function ChiefJudgeInterface() {
       return;
     }
 
-    // CRITICAL: Normalize detailIndex to number for queries
-    // This ensures we query the same type that's stored in Firestore
-    const normalizedDetail = normalizeDetailIndex(detailIndexToMatch);
-
     setSelectedAthleteId(athleteId); // Keep composite key for highlighting
     setEditingRouteId(routeIdToEdit); // Store for add attempt
-    setEditingDetailIndex(normalizedDetail); // Store normalized detail for qualification
     setEditPanelVisible(true);
 
     try {
+      // Normalize detailIndex from UI selection for query filtering
+      const normalizedDetail = normalizeDetailIndex(detailIndexToMatch);
+
       const attemptsRef = collection(firestore, `boulderComps/${selectedComp}/attempts`);
       const constraints = [
         where('athleteId', '==', actualAthleteId),
@@ -574,9 +568,9 @@ function ChiefJudgeInterface() {
         where('round', '==', round),
       ];
 
-      // CRITICAL: For qualification, always filter by normalized detailIndex
-      // This prevents cross-detail contamination
-      if (round === 'qualification' && normalizedDetail !== undefined) {
+      // For qualification, filter by normalized detailIndex if specific detail selected
+      // If "All Details" (null), don't add filter → load attempts from all details
+      if (round === 'qualification' && normalizedDetail !== null) {
         constraints.push(where('detailIndex', '==', normalizedDetail));
       }
 
@@ -606,7 +600,6 @@ function ChiefJudgeInterface() {
     setEditPanelVisible(false);
     setAttemptHistory([]);
     setEditingRouteId('');
-    setEditingDetailIndex(undefined); // Reset detail index
     setNewAttemptSymbol('1');
   };
 
@@ -619,9 +612,12 @@ function ChiefJudgeInterface() {
       ? selectedAthleteId.split('_')[0]
       : selectedAthleteId;
 
-    // CRITICAL: For qualification, detailIndex is REQUIRED
-    // This prevents malformed records that break leaderboards
-    if (round === 'qualification' && editingDetailIndex === undefined) {
+    // Normalize detailIndex from UI selection (converts "" to null, "1" to 1, etc.)
+    const normalizedDetail = normalizeDetailIndex(selectedDetail);
+
+    // CRITICAL: For qualification, detailIndex must be a number (not null)
+    // Null means "All Details" is selected, which is invalid for qualification writes
+    if (round === 'qualification' && normalizedDetail === null) {
       showToast('Cannot add attempts in "All Details" view. Please select a specific detail first.');
       return;
     }
@@ -646,9 +642,10 @@ function ChiefJudgeInterface() {
         offline: false,
       };
 
-      // Add detailIndex for qualification rounds (already validated above)
-      if (round === 'qualification' && editingDetailIndex !== undefined) {
-        attemptData.detailIndex = editingDetailIndex;
+      // Write detailIndex as number for qualification rounds
+      // (already validated above - normalizedDetail is never null here for qualification)
+      if (round === 'qualification' && normalizedDetail !== null) {
+        attemptData.detailIndex = normalizedDetail;
       }
 
       const docRef = await addDoc(attemptsRef, attemptData);

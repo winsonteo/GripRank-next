@@ -16,19 +16,19 @@ import {
  *
  * RATIONALE:
  * - Legacy data stores detailIndex as number
- * - UI/URLs may provide strings
+ * - UI/URLs may provide strings ("1", "2") or empty string (All Details)
  * - Firestore queries must use the same type as stored data
  *
- * @param detailIndex - String or number from UI/state
- * @returns number if parseable, undefined if empty/invalid
+ * @param raw - String, number, null, or undefined from UI/state
+ * @returns number if parseable, null if empty/invalid
  */
-export function normalizeDetailIndex(detailIndex: string | number | undefined): number | undefined {
-  if (detailIndex === undefined || detailIndex === null || detailIndex === '') {
-    return undefined;
+export function normalizeDetailIndex(raw: string | number | null | undefined): number | null {
+  if (raw === null || raw === undefined || raw === '') {
+    return null;
   }
 
-  const parsed = typeof detailIndex === 'number' ? detailIndex : Number(detailIndex);
-  return Number.isNaN(parsed) ? undefined : parsed;
+  const parsed = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**
@@ -127,7 +127,8 @@ export function useChiefJudgeAttempts(
     const athleteFilters = [where('categoryId', '==', categoryId)];
 
     // For qualification rounds, filter by detailIndex (normalized to number)
-    if (round === 'qualification' && normalizedDetailIndex !== undefined) {
+    // Only add where clause if normalizedDetailIndex is not null (i.e., specific detail selected)
+    if (round === 'qualification' && normalizedDetailIndex !== null) {
       athleteFilters.push(where('detailIndex', '==', normalizedDetailIndex));
     }
 
@@ -146,7 +147,8 @@ export function useChiefJudgeAttempts(
     }
 
     // For qualification rounds, filter by detailIndex (normalized to number)
-    if (round === 'qualification' && normalizedDetailIndex !== undefined) {
+    // Only add where clause if normalizedDetailIndex is not null (i.e., specific detail selected)
+    if (round === 'qualification' && normalizedDetailIndex !== null) {
       attemptFilters.push(where('detailIndex', '==', normalizedDetailIndex));
     }
 
