@@ -1052,11 +1052,11 @@ function ChiefJudgeInterface() {
                         <tr
                           key={athlete.id}
                           onClick={() => openEditPanel(athlete.id)}
-                          className={`border-b border-[#19bcd6]/50 hover:bg-[#27a9e1]/10 cursor-pointer transition-colors ${
-                            idx % 2 === 1 ? 'bg-white/[0.02]' : ''
+                          className={`border-b border-[#19bcd6]/50 hover:bg-[#27a9e1]/15 cursor-pointer transition-colors ${
+                            idx % 2 === 1 ? 'bg-white/[0.025]' : 'bg-white/[0.015]'
                           } ${
                             selectedAthleteId === athlete.id
-                              ? 'bg-[#27a9e1]/15 shadow-[inset_3px_0_0_0_rgba(39,169,225,0.9)]'
+                              ? 'bg-[#27a9e1]/25 shadow-[inset_4px_0_0_0_rgba(39,169,225,0.95)] font-semibold'
                               : ''
                           }`}
                         >
@@ -1077,26 +1077,6 @@ function ChiefJudgeInterface() {
               )}
             </div>
 
-            {/* Undo button */}
-            <div className="flex items-center gap-3 mt-3">
-              <button
-                type="button"
-                onClick={undoLastAction}
-                disabled={!lastAction}
-                className={`px-3 py-1.5 text-sm border border-[#19bcd6] bg-transparent text-gray-300 rounded-lg transition-all ${
-                  lastAction
-                    ? 'hover:border-[#27a9e1] hover:text-[#27a9e1] cursor-pointer'
-                    : 'opacity-60 cursor-not-allowed'
-                }`}
-              >
-                Undo last change
-              </button>
-              {lastAction && (
-                <span className="text-xs text-gray-400">
-                  Last change: {lastAction.description}
-                </span>
-              )}
-            </div>
           </section>
 
           {/* Edit Attempt Panel */}
@@ -1123,7 +1103,7 @@ function ChiefJudgeInterface() {
               {/* Add New Attempt */}
               <div className="mb-4 p-4 bg-[#162246] border border-[#19bcd6] rounded-xl">
                 <div className="text-sm font-semibold text-gray-200 mb-3">Add New Attempt</div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <label className="flex flex-col gap-2">
                     <span className="text-xs text-gray-400">Result</span>
                     <select
@@ -1143,6 +1123,19 @@ function ChiefJudgeInterface() {
                   >
                     {addingAttempt ? 'Adding...' : 'Add Attempt'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={undoLastAction}
+                    disabled={!lastAction || !selectedAthleteId}
+                    className="mt-5 px-4 py-2 text-sm border border-[#27a9e1] text-[#27a9e1] rounded-lg hover:bg-[#27a9e1]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Undo last change
+                  </button>
+                  <span className="mt-5 text-xs text-gray-300">
+                    {selectedAthlete && selectedRouteLabel
+                      ? `Undo last change for #${selectedAthlete.bib} ${selectedAthlete.name} on ${selectedRouteLabel}`
+                      : 'No climber selected'}
+                  </span>
                 </div>
               </div>
 
