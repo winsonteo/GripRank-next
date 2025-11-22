@@ -275,7 +275,7 @@ function SetupInterface() {
     const batch = writeBatch(firestore)
     let hasWrites = false
 
-    existingSnap.forEach((routeSnap, index) => {
+    existingSnap.docs.forEach((routeSnap, index) => {
       const data = routeSnap.data() || {}
       const order = Number.isFinite(Number(data.order))
         ? Number(data.order)
