@@ -1048,7 +1048,7 @@ function SetupInterface() {
                   onClick={() => setShowCreateForm((prev) => !prev)}
                   className="rounded-lg border border-[#19bcd6] px-3 py-2 text-sm text-gray-100 hover:border-[#27a9e1] hover:text-[#27a9e1]"
                 >
-                  {showCreateForm ? "Hide form" : "Show form"}
+                  {showCreateForm ? "Hide" : "Show"}
                 </button>
               </div>
             </div>
