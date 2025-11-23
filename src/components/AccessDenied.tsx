@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { SignInButton, UserButton } from '@clerk/nextjs';
-import { usePathname } from 'next/navigation';
 
 interface AccessDeniedProps {
   /**

@@ -76,7 +76,9 @@ export function useJudgePasscodeSession() {
         setError(null)
       } catch (err) {
         if (err instanceof Error && err.message === "SESSION_EXPIRED") {
-          await signOut(firebaseAuth)
+          if (firebaseAuth) {
+            await signOut(firebaseAuth)
+          }
           setSession(null)
           setError("Session expired. Enter the latest judge code to continue.")
         } else {
