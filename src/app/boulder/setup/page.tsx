@@ -925,23 +925,23 @@ function SetupInterface() {
   const selectedPhaseConfig = ROUTE_PHASE_CONFIG[routePhase]
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <div className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900 via-neutral-950 to-black">
+    <div className="min-h-screen bg-[#0b1220] text-gray-100">
+      <div className="border-b border-[#19bcd6]/30 bg-[#0e1730]">
         <Container className="py-10">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-blue-400">Boulder Setup</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-[#27a9e1]">Boulder Setup</p>
               <h1 className="mt-2 text-4xl md:text-5xl font-black leading-tight">
                 Create and manage competitions
               </h1>
-              <p className="mt-3 text-neutral-400 max-w-2xl">
+              <p className="mt-3 text-gray-400 max-w-2xl">
                 Staff/Admin only. Use this to create comps, manage categories, route counts, and
                 rename routes for judges and scoreboards.
               </p>
             </div>
             <Link
               href="/boulder/judge"
-              className="hidden md:inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-850"
+              className="hidden md:inline-flex items-center gap-2 rounded-lg border border-[#19bcd6] bg-[#101a34] px-4 py-2 text-sm text-gray-200 hover:bg-[#19bcd6]/10"
             >
               Go to Judge Panel
             </Link>
@@ -957,7 +957,7 @@ function SetupInterface() {
                 ? "bg-green-100 text-green-900 border border-green-200"
                 : toast.tone === "warn"
                   ? "bg-yellow-100 text-yellow-900 border border-yellow-200"
-                  : "bg-neutral-800 text-neutral-100 border border-neutral-700"
+                  : "bg-[#0e1730] text-gray-100 border border-[#19bcd6]"
             }`}
           >
             {toast.message}
@@ -967,39 +967,39 @@ function SetupInterface() {
 
       <Container className="py-10 space-y-10">
         {/* Create competition */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 shadow-xl shadow-black/20">
+        <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Create Boulder Competition</h2>
-              <p className="text-neutral-400 text-sm">Spin up a new boulder comp in a single step.</p>
+              <h2 className="text-2xl font-bold text-gray-100">Create Boulder Competition</h2>
+              <p className="text-gray-400 text-sm">Spin up a new boulder comp in a single step.</p>
             </div>
-            {createMsg && <p className="text-sm text-neutral-300">{createMsg}</p>}
+            {createMsg && <p className="text-sm text-gray-300">{createMsg}</p>}
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <label className="flex flex-col gap-2 text-sm">
+            <label className="flex flex-col gap-2 text-sm text-gray-400">
               Competition Name
               <input
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 placeholder="My Boulder Open"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm">
+            <label className="flex flex-col gap-2 text-sm text-gray-400">
               Competition ID (optional)
               <input
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 placeholder="my-boulder-open"
                 value={createId}
                 onChange={(e) => setCreateId(e.target.value)}
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm">
+            <label className="flex flex-col gap-2 text-sm text-gray-400">
               Event Date
               <input
                 type="date"
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={createDate}
                 onChange={(e) => setCreateDate(e.target.value)}
               />
@@ -1007,59 +1007,59 @@ function SetupInterface() {
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm">
+            <label className="flex flex-col gap-2 text-sm text-gray-400">
               Qualifier Routes
               <input
                 type="number"
                 min="1"
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={createQualCount}
                 onChange={(e) => setCreateQualCount(e.target.value)}
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm">
+            <label className="flex flex-col gap-2 text-sm text-gray-400">
               Final Routes
               <input
                 type="number"
                 min="1"
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={createFinalCount}
                 onChange={(e) => setCreateFinalCount(e.target.value)}
               />
             </label>
           </div>
 
-          <label className="mt-4 flex flex-col gap-2 text-sm">
+          <label className="mt-4 flex flex-col gap-2 text-sm text-gray-400">
             Initial Categories (optional)
             <textarea
-              className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none min-h-[120px]"
+              className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1] min-h-[120px]"
               placeholder="youthB_girls | Youth B Girls&#10;youthB_boys | Youth B Boys"
               value={createCategories}
               onChange={(e) => setCreateCategories(e.target.value)}
             />
           </label>
-          <p className="text-xs text-neutral-500">
-            Format: <code>id | display name</code>. If you omit the id we’ll slug the name for you.
+          <p className="text-xs text-gray-500">
+            Format: <code>id | display name</code>. If you omit the id we&apos;ll slug the name for you.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={handleCreateCompetition}
-              className="rounded-xl bg-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-600"
+              className="rounded-lg bg-[#19bcd6] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#27a9e1]"
             >
               Create Competition
             </button>
-            {createMsg && <span className="text-sm text-neutral-300">{createMsg}</span>}
+            {createMsg && <span className="text-sm text-gray-300">{createMsg}</span>}
           </div>
         </section>
 
         {/* Manage existing competition */}
-        <section className="space-y-6 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 shadow-xl shadow-black/20">
+        <section className="space-y-6 bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Manage Existing Competition</h2>
-              <p className="text-neutral-400 text-sm">
+              <h2 className="text-2xl font-bold text-gray-100">Manage Existing Competition</h2>
+              <p className="text-gray-400 text-sm">
                 Adjust competition metadata, categories, and quick links.
               </p>
             </div>
@@ -1071,7 +1071,7 @@ function SetupInterface() {
                     if (selectedCompId) loadCompetitionDetail(selectedCompId)
                   })
                 }
-                className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground hover:bg-input/80"
+                className="rounded-lg border border-[#19bcd6] bg-[#101a34] px-3 py-2 text-sm text-gray-200 hover:bg-[#19bcd6]/10"
               >
                 Reload
               </button>
@@ -1114,7 +1114,7 @@ function SetupInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Competition
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={selectedCompId}
                 onChange={(e) => {
                   const compId = e.target.value
@@ -1139,9 +1139,9 @@ function SetupInterface() {
               </select>
             </label>
             {selectedComp ? (
-              <div className="flex flex-wrap gap-2 text-sm text-neutral-300">{compSummary}</div>
+              <div className="flex flex-wrap gap-2 text-sm text-gray-300">{compSummary}</div>
             ) : (
-              <div className="text-sm text-neutral-500">Select a competition to view details.</div>
+              <div className="text-sm text-gray-500">Select a competition to view details.</div>
             )}
           </div>
 
@@ -1151,7 +1151,7 @@ function SetupInterface() {
                 <label className="flex flex-col gap-2 text-sm">
                   Name
                   <input
-                    className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                    className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                   />
@@ -1159,7 +1159,7 @@ function SetupInterface() {
                 <label className="flex flex-col gap-2 text-sm">
                   Status
                   <select
-                    className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                    className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
                   >
@@ -1173,7 +1173,7 @@ function SetupInterface() {
                   Event Date
                   <input
                     type="date"
-                    className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                    className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                     value={editDate}
                     onChange={(e) => setEditDate(e.target.value)}
                   />
@@ -1185,7 +1185,7 @@ function SetupInterface() {
                   <input
                     type="number"
                     min="1"
-                    className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                    className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                     value={editQualCount}
                     onChange={(e) => setEditQualCount(e.target.value)}
                   />
@@ -1195,7 +1195,7 @@ function SetupInterface() {
                   <input
                     type="number"
                     min="1"
-                    className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                    className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                     value={editFinalCount}
                     onChange={(e) => setEditFinalCount(e.target.value)}
                   />
@@ -1209,23 +1209,23 @@ function SetupInterface() {
                 >
                   Save Competition Settings
                 </button>
-                {editMsg && <span className="text-sm text-neutral-300">{editMsg}</span>}
+                {editMsg && <span className="text-sm text-gray-300">{editMsg}</span>}
               </div>
 
-              <hr className="border-neutral-800" />
+              <hr className="border-[#19bcd6]/30" />
 
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-xl font-semibold">Categories</h3>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-gray-500">
                     Use the move buttons to reorder categories. That order flows through start lists and displays.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3">
                   {categoriesLoading ? (
-                    <div className="text-sm text-neutral-400">Loading categories…</div>
+                    <div className="text-sm text-gray-400">Loading categories…</div>
                   ) : !categories.length ? (
-                    <div className="text-sm text-neutral-500">No categories yet. Add one below.</div>
+                    <div className="text-sm text-gray-500">No categories yet. Add one below.</div>
                   ) : (
                     categories.map((cat, index) => (
                       <div
@@ -1289,7 +1289,7 @@ function SetupInterface() {
                   <label className="flex flex-col gap-2 text-sm">
                     Category ID
                     <input
-                      className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                       placeholder="youthB_girls"
                       value={newCatId}
                       onChange={(e) => setNewCatId(e.target.value)}
@@ -1298,7 +1298,7 @@ function SetupInterface() {
                   <label className="flex flex-col gap-2 text-sm">
                     Display Name
                     <input
-                      className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                       placeholder="Youth B Girls"
                       value={newCatName}
                       onChange={(e) => setNewCatName(e.target.value)}
@@ -1316,23 +1316,23 @@ function SetupInterface() {
                 </div>
               </div>
 
-              <hr className="border-neutral-800" />
+              <hr className="border-[#19bcd6]/30" />
 
               <div className="space-y-4 rounded-2xl border border-border bg-panel/60 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h3 className="text-xl font-semibold">Route Display Names</h3>
-                    <p className="text-sm text-neutral-400">
+                    <p className="text-sm text-gray-400">
                       Customize route names for judges and scoreboards.
                     </p>
                   </div>
-                  {routeRenameMsg && <span className="text-sm text-neutral-300">{routeRenameMsg}</span>}
+                  {routeRenameMsg && <span className="text-sm text-gray-300">{routeRenameMsg}</span>}
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-2 text-sm">
                     Category
                     <select
-                      className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                       value={routeCategoryId}
                       onChange={(e) => loadRoutesForRename(e.target.value, routePhase)}
                     >
@@ -1347,7 +1347,7 @@ function SetupInterface() {
                   <label className="flex flex-col gap-2 text-sm">
                     Phase
                     <select
-                      className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                       value={routePhase}
                       onChange={(e) => {
                         const value = e.target.value === "final" ? "final" : "qualifier"
@@ -1427,9 +1427,9 @@ function SetupInterface() {
                   >
                     {routeRenameSaving ? "Saving…" : "Save Route Names"}
                   </button>
-                  {routeRenameMsg && <span className="text-sm text-neutral-300">{routeRenameMsg}</span>}
+                  {routeRenameMsg && <span className="text-sm text-gray-300">{routeRenameMsg}</span>}
                   {routeCategoryId && !!routesForSelected.length && (
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-gray-500">
                       {routesForSelected.length} {selectedPhaseConfig.labelPrefix.toLowerCase()}
                       {routesForSelected.length === 1 ? "" : "s"} available.
                     </span>
