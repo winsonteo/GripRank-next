@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import Container from "@/components/Container"
 import AccessDenied from "@/components/AccessDenied"
-import { useUser } from "@clerk/nextjs"
+import { UserButton, useUser } from "@clerk/nextjs"
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth"
 import { useUserRole, isStaffRole } from "@/hooks/useUserRole"
 import {
@@ -211,6 +212,8 @@ export default function ImportPage() {
 }
 
 function ImportInterface() {
+  const { user } = useUser()
+
   const [comps, setComps] = useState<Competition[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCompId, setSelectedCompId] = useState("")
@@ -564,35 +567,37 @@ function ImportInterface() {
   }, [previewSummary])
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
-      <div className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900 via-neutral-950 to-black">
-        <Container className="py-10">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-blue-400">Boulder Admin</p>
-              <h1 className="mt-2 text-4xl md:text-5xl font-black leading-tight">Import athletes</h1>
-              <p className="mt-3 text-neutral-400 max-w-2xl">
-                Upload or paste CSV/TSV to add athletes to a competition. Excel files aren’t supported yet—export as
-                CSV first.
-              </p>
+    <main className="py-6 min-h-screen bg-[#0b1220] text-gray-200">
+      <Container>
+        <div className="max-w-[1100px] mx-auto space-y-6">
+          {/* Header - Consistent with Judge/Chief/Setup pages */}
+          <header className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Link href="/" className="inline-block">
+                <Image
+                  src="/logo_header.png"
+                  alt="GripRank"
+                  width={4001}
+                  height={1228}
+                  priority
+                  className="h-11 w-auto"
+                />
+              </Link>
+              <span className="text-gray-400">Import Athletes</span>
             </div>
-            <Link
-              href="/boulder/setup"
-              className="hidden md:inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-850"
-            >
-              Go to Setup
-            </Link>
-          </div>
-        </Container>
-      </div>
-
-      <Container className="py-10 space-y-10">
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 shadow-xl shadow-black/20">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
+              <span className="truncate max-w-[240px]">
+                {user?.emailAddresses[0]?.emailAddress || 'Signed in'}
+              </span>
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </header>
+        <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
           <div className="grid gap-4 md:grid-cols-[2fr,1fr] md:items-end">
             <label className="flex flex-col gap-2 text-sm">
               Competition
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={selectedCompId}
                 onChange={(e) => setSelectedCompId(e.target.value)}
                 disabled={loading}
@@ -605,14 +610,14 @@ function ImportInterface() {
                 ))}
               </select>
             </label>
-            <div className="text-sm text-neutral-400">{renderStatus()}</div>
+            <div className="text-sm text-gray-400">{renderStatus()}</div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-[2fr,1fr] md:items-end mt-4">
             <label className="flex flex-col gap-2 text-sm">
               Category
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={selectedCategoryId}
                 onChange={(e) => setSelectedCategoryId(e.target.value)}
                 disabled={!selectedCompId || locked || !categories.length}
@@ -625,19 +630,19 @@ function ImportInterface() {
                 ))}
               </select>
             </label>
-            <div className="flex flex-wrap gap-3 text-xs text-neutral-500">
+            <div className="flex flex-wrap gap-3 text-xs text-gray-1000">
               <span>Default detail and status are applied when rows omit them.</span>
             </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 shadow-xl shadow-black/20 space-y-4">
+        <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5 space-y-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-2xl font-bold">Import data</h2>
-              <p className="text-neutral-400 text-sm">Upload CSV/TSV or paste rows below.</p>
+              <p className="text-gray-400 text-sm">Upload CSV/TSV or paste rows below.</p>
             </div>
-            <div className="text-sm text-neutral-300">{fileStatus}</div>
+            <div className="text-sm text-gray-300">{fileStatus}</div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -648,9 +653,9 @@ function ImportInterface() {
                 accept=".csv,.tsv,.txt"
                 onChange={(e) => handleFile(e.target.files?.[0] || null)}
                 disabled={!selectedCategoryId || locked}
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
               />
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-gray-1000">
                 Excel files are not supported yet. Export as CSV before uploading.
               </span>
             </label>
@@ -658,13 +663,13 @@ function ImportInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Paste CSV/TSV
               <textarea
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none min-h-[200px]"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1] min-h-[200px]"
                 placeholder="Bib,Name,Team,Detail&#10;123,Climber A,Gym,1"
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
                 disabled={!selectedCategoryId || locked}
               />
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-gray-1000">
                 Columns: Bib, Name, Team, Category, Detail, Status. Headers optional; defaults to Bib/Name/Team/Detail.
               </span>
             </label>
@@ -674,7 +679,7 @@ function ImportInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Default Detail #
               <input
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={defaultDetail}
                 onChange={(e) => setDefaultDetail(e.target.value)}
                 disabled={!selectedCategoryId || locked}
@@ -683,7 +688,7 @@ function ImportInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Default Status
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={defaultStatus}
                 onChange={(e) => setDefaultStatus(e.target.value)}
                 disabled={!selectedCategoryId || locked}
@@ -731,7 +736,7 @@ function ImportInterface() {
               type="button"
               onClick={preview}
               disabled={!selectedCategoryId || locked || loading}
-              className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Loading…" : "Preview"}
             </button>
@@ -739,7 +744,7 @@ function ImportInterface() {
               type="button"
               onClick={runImport}
               disabled={!previewRows.length || locked || importing}
-              className="rounded-xl border border-primary px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2.5 text-sm border border-[#19bcd6] bg-[#101a34] text-gray-200 rounded-lg hover:bg-[#19bcd6]/10 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {importing ? "Importing…" : "Import"}
             </button>
@@ -749,7 +754,7 @@ function ImportInterface() {
                   ? "text-emerald-400"
                   : message.tone === "warn"
                     ? "text-amber-300"
-                    : "text-neutral-300"
+                    : "text-gray-300"
               }`}
             >
               {message.text}
@@ -757,17 +762,17 @@ function ImportInterface() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 shadow-xl shadow-black/20">
+        <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-xl font-semibold">Preview</h3>
-              <p className="text-sm text-neutral-400">{selectedCompLabel}</p>
+              <p className="text-sm text-gray-400">{selectedCompLabel}</p>
             </div>
-            <span className="text-sm text-neutral-300">{previewCountsLabel}</span>
+            <span className="text-sm text-gray-300">{previewCountsLabel}</span>
           </div>
 
           {!previewRows.length ? (
-            <div className="mt-4 text-sm text-neutral-500">Nothing to preview yet.</div>
+            <div className="mt-4 text-sm text-gray-1000">Nothing to preview yet.</div>
           ) : (
             <div className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-neutral-800">
               <table className="min-w-full border-collapse text-sm">
@@ -806,7 +811,7 @@ function ImportInterface() {
                         : willUpdate
                           ? "text-yellow-300"
                           : willSkip
-                            ? "text-neutral-300"
+                            ? "text-gray-300"
                             : "text-emerald-300"
                     const notes: string[] = [...row.issues]
                     if (row.duplicate) notes.push("Duplicate bib in import")
@@ -817,12 +822,12 @@ function ImportInterface() {
                         <td className="px-3 py-2">{row.index}</td>
                         <td className="px-3 py-2 font-mono text-xs text-neutral-200">{row.bib || "—"}</td>
                         <td className="px-3 py-2 text-neutral-100">{row.name || "—"}</td>
-                        <td className="px-3 py-2 text-neutral-300">{row.team || "—"}</td>
-                        <td className="px-3 py-2 text-neutral-300">{row.categoryId || selectedCategoryId}</td>
-                        <td className="px-3 py-2 text-neutral-300">{row.detailIndex ?? "—"}</td>
-                        <td className="px-3 py-2 text-neutral-300">{row.status}</td>
+                        <td className="px-3 py-2 text-gray-300">{row.team || "—"}</td>
+                        <td className="px-3 py-2 text-gray-300">{row.categoryId || selectedCategoryId}</td>
+                        <td className="px-3 py-2 text-gray-300">{row.detailIndex ?? "—"}</td>
+                        <td className="px-3 py-2 text-gray-300">{row.status}</td>
                         <td className={`px-3 py-2 font-semibold ${statusClass}`}>{actionLabel}</td>
-                        <td className="px-3 py-2 text-neutral-400">{notes.join("; ") || "—"}</td>
+                        <td className="px-3 py-2 text-gray-400">{notes.join("; ") || "—"}</td>
                       </tr>
                     )
                   })}
@@ -831,7 +836,8 @@ function ImportInterface() {
             </div>
           )}
         </section>
+        </div>
       </Container>
-    </div>
+    </main>
   )
 }

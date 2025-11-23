@@ -1,13 +1,13 @@
 'use client'
-'use client'
 
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import Container from "@/components/Container"
 import AccessDenied from "@/components/AccessDenied"
-import { useUser } from "@clerk/nextjs"
+import { UserButton, useUser } from "@clerk/nextjs"
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth"
 import { useUserRole, isStaffRole } from "@/hooks/useUserRole"
 import {
@@ -70,6 +70,8 @@ export default function ScorecardsPage() {
 }
 
 function ScorecardsInterface() {
+  const { user } = useUser()
+
   const [comps, setComps] = useState<Competition[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [details, setDetails] = useState<string[]>([])
@@ -288,34 +290,37 @@ function ScorecardsInterface() {
     ))
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
-      <div className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900 via-neutral-950 to-black">
-        <Container className="py-10">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-blue-400">Boulder Admin</p>
-              <h1 className="mt-2 text-4xl md:text-5xl font-black leading-tight">Scorecards</h1>
-              <p className="mt-3 text-neutral-400 max-w-2xl">
-                Generate print-friendly scorecards for judges. Use the filters, then print or save as PDF.
-              </p>
+    <main className="py-6 min-h-screen bg-[#0b1220] text-gray-200">
+      <Container>
+        <div className="max-w-[1100px] mx-auto space-y-6">
+          {/* Header - Consistent with Judge/Chief/Setup pages */}
+          <header className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Link href="/" className="inline-block">
+                <Image
+                  src="/logo_header.png"
+                  alt="GripRank"
+                  width={4001}
+                  height={1228}
+                  priority
+                  className="h-11 w-auto"
+                />
+              </Link>
+              <span className="text-gray-400">Scorecards</span>
             </div>
-            <Link
-              href="/boulder/setup"
-              className="hidden md:inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-850"
-            >
-              Go to Setup
-            </Link>
-          </div>
-        </Container>
-      </div>
-
-      <Container className="py-10 space-y-8">
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-6 shadow-xl shadow-black/20 space-y-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
+              <span className="truncate max-w-[240px]">
+                {user?.emailAddresses[0]?.emailAddress || 'Signed in'}
+              </span>
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </header>
+        <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5 space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <label className="flex flex-col gap-2 text-sm">
               Competition
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={selectedCompId}
                 onChange={(e) => setSelectedCompId(e.target.value)}
                 disabled={loading}
@@ -331,7 +336,7 @@ function ScorecardsInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Category
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={selectedCategoryId}
                 onChange={(e) => setSelectedCategoryId(e.target.value)}
                 disabled={!selectedCompId || loading || !categories.length}
@@ -347,7 +352,7 @@ function ScorecardsInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Round
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={round}
                 onChange={(e) => setRound(e.target.value as RoundType)}
                 disabled={!selectedCompId}
@@ -359,7 +364,7 @@ function ScorecardsInterface() {
             <label className="flex flex-col gap-2 text-sm">
               Detail (qualification)
               <select
-                className="rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                 value={detailFilter}
                 onChange={(e) => setDetailFilter(e.target.value)}
                 disabled={!selectedCategoryId || round === "final"}
@@ -379,14 +384,14 @@ function ScorecardsInterface() {
               type="button"
               onClick={loadScorecards}
               disabled={!selectedCompId || loading}
-              className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Loading…" : "Load scorecards"}
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="rounded-xl border border-primary px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/10"
+              className="px-3 py-2.5 text-sm border border-[#19bcd6] bg-[#101a34] text-gray-200 rounded-lg hover:bg-[#19bcd6]/10 transition font-semibold"
             >
               Print / PDF
             </button>
@@ -402,7 +407,7 @@ function ScorecardsInterface() {
                   <h3 className="text-xl font-semibold">
                     {block.categoryName} ({block.categoryId})
                   </h3>
-                  <p className="text-sm text-neutral-400">
+                  <p className="text-sm text-gray-400">
                     {block.routes.length} routes • {block.athletes.length} athletes
                   </p>
                 </div>
@@ -418,7 +423,7 @@ function ScorecardsInterface() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h4 className="text-lg font-semibold text-neutral-50 print:text-black">
+                          <h4 className="text-lg font-semibold text-gray-100 print:text-black">
                             {ath.name || bibDisplay || ath.id}
                           </h4>
                           <div className="text-sm text-neutral-300 print:text-black">
@@ -433,7 +438,7 @@ function ScorecardsInterface() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex flex-col items-center text-xs text-neutral-400 print:text-black">
+                        <div className="flex flex-col items-center text-xs text-gray-400 print:text-black">
                           <span>QR</span>
                           <img
                             className="h-20 w-20 rounded border border-neutral-800 bg-white object-contain print:border-neutral-500"
@@ -494,12 +499,13 @@ function ScorecardsInterface() {
           ))}
 
           {!cards.length && (
-            <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 text-sm text-neutral-400">
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 text-sm text-gray-400">
               {status || "No scorecards to display yet."}
             </div>
           )}
         </section>
+        </div>
       </Container>
-    </div>
+    </main>
   )
 }
