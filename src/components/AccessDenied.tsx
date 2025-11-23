@@ -85,7 +85,7 @@ export default function AccessDenied({
             >
               Return to Home
             </Link>
-            <SignInButton afterSignInUrl={pathname || '/'}>
+            <SignInButton>
               <button
                 type="button"
                 className="inline-block rounded-md border border-blue-600 px-6 py-2 font-medium text-blue-700 hover:bg-blue-50"
