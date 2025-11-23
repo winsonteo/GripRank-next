@@ -660,12 +660,12 @@ function RouteCells({ routes }: { routes: LeaderboardRow["routes"] }) {
         return (
           <div
             key={route.key}
-            className="flex flex-col overflow-hidden rounded text-center font-bold w-4 md:w-5 h-7 md:h-8 flex-shrink-0"
+            className="flex flex-col overflow-hidden rounded text-center font-bold w-4 md:w-5 h-9 md:h-10 flex-shrink-0"
             style={{
               border: '1px solid #2a3550',
               background: 'var(--route-empty)',
               fontFamily: 'Arial',
-              fontSize: '9px'
+              fontSize: '12px'
             }}
             title={title}
           >

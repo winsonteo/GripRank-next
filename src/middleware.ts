@@ -5,6 +5,7 @@ const isProtectedRoute = createRouteMatcher([
   '/judge(.*)',
   '/boulder/judge(.*)',
   '/boulder/chief(.*)',
+  '/boulder/setup(.*)',
   '/lead/judge(.*)',
   '/speed/judge(.*)',
   '/admin(.*)',
