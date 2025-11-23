@@ -6,23 +6,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Git Workflow & Branch Management
 
-**CRITICAL:** All coding work must be done on separate feature branches. Never work directly on `main`.
+**IMPORTANT REPOSITORY PATH:**
+All work must be done in: `/Users/winson/Projects/griprank-next-claude` (note capital P in Projects)
 
-- **Create feature branches** for all new work: `git checkout -b feature/your-feature-name`
+**CONCURRENT WORK WITH CODEX:**
+- Codex may be working concurrently in a separate terminal
+- **ALWAYS check git status** before starting work to see if there are uncommitted changes from Codex
+- **Pull latest changes** before making edits: `git pull origin main`
+- **Communicate clearly** when switching between Claude Code and Codex to avoid conflicts
+- If you encounter merge conflicts, **stop and ask the user** how to proceed
+
+**WORKFLOW:**
+- **Feature branches** are optional - user will specify whether to use a branch or work directly on main
 - **Commit frequently** with clear, imperative commit messages
-- **Submit PRs** instead of pushing to main - PRs will be reviewed by Codex before merging
-- **Do not interfere** with other branches or main branch during development
+- **Always verify builds pass** before committing: `npm run build`
+- **Ask before pushing** to main if uncertain
 - **Always plan** and break work into smaller tasks before implementation
-- **Seek approval** before implementing any significant changes
 
-Example workflow:
+Example branch workflow (when requested):
 ```bash
-git checkout -b feature/add-speed-scoring
+git checkout -b feature/your-feature-name
 # ... make changes ...
 git add .
-git commit -m "Add speed scoring logic"
-git push -u origin feature/add-speed-scoring
-# Submit PR for review
+git commit -m "Add feature"
+git push -u origin feature/your-feature-name
+# Create PR or merge as directed
+```
+
+Example direct-to-main workflow (when requested):
+```bash
+# Pull latest first
+git pull origin main
+# ... make changes ...
+git add .
+git commit -m "Add feature"
+npm run build  # Verify build passes
+git push origin main
 ```
 
 ---
