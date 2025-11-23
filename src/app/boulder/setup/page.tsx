@@ -268,11 +268,11 @@ function SetupInterface() {
     if (!compId || !catId || !Number.isFinite(total) || total <= 0 || !firestore) return
     const config = ROUTE_PHASE_CONFIG[phase]
     const routesCol = collection(
-      firestore,
+      firestore!,
       `boulderComps/${compId}/categories/${catId}/${config.collection}`
     )
     const existingSnap = await getDocs(routesCol)
-    const batch = writeBatch(firestore)
+    const batch = writeBatch(firestore!)
     let hasWrites = false
 
     existingSnap.docs.forEach((routeSnap, index) => {
@@ -339,7 +339,7 @@ function SetupInterface() {
       const catId = cat.id
       try {
         const detailCol = collection(
-          firestore,
+          firestore!,
           `boulderComps/${compId}/categories/${catId}/details`
         )
         const existingSnap = await getDocs(detailCol)
@@ -347,7 +347,7 @@ function SetupInterface() {
 
         const athleteSnap = await getDocs(
           query(
-            collection(firestore, `boulderComps/${compId}/athletes`),
+            collection(firestore!, `boulderComps/${compId}/athletes`),
             where("categoryId", "==", catId)
           )
         )
@@ -364,7 +364,7 @@ function SetupInterface() {
 
         if (!detailValues.size) continue
 
-        const batch = writeBatch(firestore)
+        const batch = writeBatch(firestore!)
         let writes = 0
         detailValues.forEach((value) => {
           const numeric = Number(value)
@@ -396,7 +396,7 @@ function SetupInterface() {
     try {
       const snap = await getDocs(collection(firestore, "boulderComps"))
       const list = snap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as Competition) }))
+        .map((d) => ({ ...(d.data() as Competition), id: d.id }))
         .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
       setComps(list)
     } catch (err) {
@@ -433,7 +433,7 @@ function SetupInterface() {
     }
     setCreateMsg("Creating…")
     try {
-      const compRef = doc(firestore, "boulderComps", compId)
+      const compRef = doc(firestore!, "boulderComps", compId)
       const existing = await getDoc(compRef)
       if (existing.exists()) {
         showToast("That competition ID already exists. Pick another.", "warn")
@@ -456,9 +456,9 @@ function SetupInterface() {
 
       const cats = parseCategoryLines(createCategories)
       if (cats.length) {
-        const batch = writeBatch(firestore)
+        const batch = writeBatch(firestore!)
         cats.forEach((cat, index) => {
-          const catRef = doc(firestore, `boulderComps/${compId}/categories/${cat.id}`)
+          const catRef = doc(firestore!, `boulderComps/${compId}/categories/${cat.id}`)
           batch.set(catRef, {
             name: cat.name,
             order: index,
@@ -493,7 +493,7 @@ function SetupInterface() {
   const loadCompetitionDetail = async (compId: string) => {
     if (!compId || !firestore) return
     try {
-      const compSnap = await getDoc(doc(firestore, "boulderComps", compId))
+      const compSnap = await getDoc(doc(firestore!, "boulderComps", compId))
       if (!compSnap.exists()) {
         showToast("Competition not found. It may have been deleted.", "warn")
         setSelectedComp(null)
@@ -501,9 +501,10 @@ function SetupInterface() {
         return
       }
       const data = compSnap.data() as Competition
-      setSelectedComp({ id: compId, ...data })
+      setSelectedComp({ ...data, id: compId })
       const qual = Number(data.qualifierRouteCount ?? data.boulderCount) || 0
-      const fin = Number(data.finalRouteCount ?? (data as never)?.finalBoulderCount) || 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fin = Number(data.finalRouteCount ?? (data as any)?.finalBoulderCount) || 0
       setQualifierRouteCount(qual)
       setFinalRouteCount(fin)
       setEditName(data.name || "")
@@ -538,7 +539,7 @@ function SetupInterface() {
         return
       }
       await setDoc(
-        doc(firestore, "boulderComps", selectedCompId),
+        doc(firestore!, "boulderComps", selectedCompId),
         {
           name: editName.trim(),
           status: editStatus,
@@ -586,7 +587,7 @@ function SetupInterface() {
     if (!firestore) return
     setCategoriesLoading(true)
     try {
-      const snap = await getDocs(collection(firestore, `boulderComps/${compId}/categories`))
+      const snap = await getDocs(collection(firestore!, `boulderComps/${compId}/categories`))
       const cats = snap.docs.map((d) => {
         const data = d.data() || {}
         return {
@@ -623,10 +624,10 @@ function SetupInterface() {
   const persistCategoryOrder = async (next: Category[]) => {
     if (!selectedCompId || !firestore) return
     try {
-      const batch = writeBatch(firestore)
+      const batch = writeBatch(firestore!)
       next.forEach((cat, index) => {
         batch.set(
-          doc(firestore, `boulderComps/${selectedCompId}/categories/${cat.id}`),
+          doc(firestore!, `boulderComps/${selectedCompId}/categories/${cat.id}`),
           { order: index, updatedAt: serverTimestamp() },
           { merge: true }
         )
@@ -654,7 +655,7 @@ function SetupInterface() {
     if (!selectedCompId || !firestore) return
     try {
       await setDoc(
-        doc(firestore, `boulderComps/${selectedCompId}/categories/${catId}`),
+        doc(firestore!, `boulderComps/${selectedCompId}/categories/${catId}`),
         { name, updatedAt: serverTimestamp() },
         { merge: true }
       )
@@ -672,7 +673,7 @@ function SetupInterface() {
   ) => {
     if (!firestore || !docs.length) return
     for (let i = 0; i < docs.length; i += 400) {
-      const batch = writeBatch(firestore)
+      const batch = writeBatch(firestore!)
       docs.slice(i, i + 400).forEach((d) => batch.delete(refFactory(d.id)))
       await batch.commit()
     }
@@ -690,18 +691,18 @@ function SetupInterface() {
     }
     try {
       const routesSnap = await getDocs(
-        collection(firestore, "boulderComps", selectedCompId, "categories", catId, "routes")
+        collection(firestore!, "boulderComps", selectedCompId, "categories", catId, "routes")
       )
       const detailsSnap = await getDocs(
-        collection(firestore, "boulderComps", selectedCompId, "categories", catId, "details")
+        collection(firestore!, "boulderComps", selectedCompId, "categories", catId, "details")
       )
       await deleteDocsChunked(routesSnap.docs, (id) =>
-        doc(firestore, "boulderComps", selectedCompId, "categories", catId, "routes", id)
+        doc(firestore!, "boulderComps", selectedCompId, "categories", catId, "routes", id)
       )
       await deleteDocsChunked(detailsSnap.docs, (id) =>
-        doc(firestore, "boulderComps", selectedCompId, "categories", catId, "details", id)
+        doc(firestore!, "boulderComps", selectedCompId, "categories", catId, "details", id)
       )
-      await deleteDoc(doc(firestore, "boulderComps", selectedCompId, "categories", catId))
+      await deleteDoc(doc(firestore!, "boulderComps", selectedCompId, "categories", catId))
       setCategories((prev) => prev.filter((c) => c.id !== catId))
       setRoutesByCategory((prev) => ({
         qualifier: Object.fromEntries(
@@ -739,7 +740,7 @@ function SetupInterface() {
     const name = rawName || toTitle(catId)
     try {
       await setDoc(
-        doc(firestore, `boulderComps/${selectedCompId}/categories/${catId}`),
+        doc(firestore!, `boulderComps/${selectedCompId}/categories/${catId}`),
         {
           name,
           order: categories.length,
@@ -820,11 +821,11 @@ function SetupInterface() {
     setRouteRenameSaving(true)
     setRouteRenameMsg("Saving…")
     try {
-      const batch = writeBatch(firestore)
+      const batch = writeBatch(firestore!)
       const phaseConfig = ROUTE_PHASE_CONFIG[routePhase]
       updates.forEach(({ id, value }) => {
         const routeRef = doc(
-          firestore,
+          firestore!,
           `boulderComps/${selectedCompId}/categories/${routeCategoryId}/${phaseConfig.collection}/${id}`
         )
         batch.set(
