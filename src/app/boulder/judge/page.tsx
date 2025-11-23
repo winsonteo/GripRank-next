@@ -889,7 +889,7 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
           <div className="rounded-2xl border border-border bg-panel p-6 shadow-lg shadow-black/30 space-y-4">
             <div>
               <p className="text-sm uppercase tracking-[0.2em] text-blue-400">Judge access</p>
-              <h1 className="mt-2 text-3xl font-bold">Enter the judge code for your competition</h1>
+              <h1 className="mt-2 text-3xl font-bold text-foreground">Enter the judge code for your competition</h1>
               <p className="text-sm text-muted-foreground">
                 Codes last 6 hours and are tied to a single competition. Changing the code in admin ends old sessions.
               </p>
@@ -936,7 +936,7 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
               <button
                 type="submit"
                 disabled={signingIn || !selectedComp}
-                className="w-full rounded-xl border border-blue-500 bg-blue-500 px-4 py-3 text-sm font-semibold text-blue-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-input/80 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {signingIn ? "Signing in…" : "Enter judge pad"}
               </button>
