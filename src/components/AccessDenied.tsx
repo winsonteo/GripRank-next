@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { SignInButton, UserButton } from '@clerk/nextjs';
-import { usePathname } from 'next/navigation';
 
 interface AccessDeniedProps {
   /**
@@ -27,8 +26,6 @@ export default function AccessDenied({
   feature = 'this page',
   message
 }: AccessDeniedProps) {
-  const pathname = usePathname();
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -85,7 +82,7 @@ export default function AccessDenied({
             >
               Return to Home
             </Link>
-            <SignInButton afterSignInUrl={pathname || '/'} afterSignUpUrl={pathname || '/'}>
+            <SignInButton>
               <button
                 type="button"
                 className="inline-block rounded-md border border-blue-600 px-6 py-2 font-medium text-blue-700 hover:bg-blue-50"
