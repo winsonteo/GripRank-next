@@ -33,6 +33,8 @@ interface Competition {
   finalRouteCount?: number
   boulderCount?: number
   updatedAt?: { seconds?: number }
+  judgePasscodeVersion?: string
+  judgePasscodeUpdatedAt?: unknown
 }
 
 interface Category {
@@ -146,6 +148,10 @@ function SetupInterface() {
   const [newCatId, setNewCatId] = useState("")
   const [newCatName, setNewCatName] = useState("")
 
+  const [judgePasscodeInput, setJudgePasscodeInput] = useState("")
+  const [judgePasscodeMsg, setJudgePasscodeMsg] = useState("")
+  const [judgePasscodeSaving, setJudgePasscodeSaving] = useState(false)
+
   useEffect(() => {
     if (!firestore) return
     loadCompetitions().catch((err) => {
@@ -252,6 +258,22 @@ function SetupInterface() {
         : new Date(value as string | number | Date)
     if (Number.isNaN(raw.getTime())) return ""
     return raw.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }, [])
+
+  const formatDateTime = useCallback((value: unknown) => {
+    if (!value) return ""
+    const raw =
+      typeof (value as { toDate?: () => Date }).toDate === "function"
+        ? (value as { toDate: () => Date }).toDate()
+        : new Date(value as string | number | Date)
+    if (Number.isNaN(raw.getTime())) return ""
+    return raw.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }, [])
 
   const dateFromInput = (value: string) => {
@@ -503,6 +525,8 @@ function SetupInterface() {
         setSelectedCompId("")
         return
       }
+      setJudgePasscodeMsg("")
+      setJudgePasscodeInput("")
       const data = compSnap.data() as Competition
       setSelectedComp({ ...data, id: compId })
       const qual = Number(data.qualifierRouteCount ?? data.boulderCount) || 0
@@ -580,6 +604,44 @@ function SetupInterface() {
       console.error(err)
       setEditMsg("")
       showToast("Failed to save settings.", "warn")
+    }
+  }
+
+  const handleUpdateJudgePasscode = async () => {
+    if (!selectedCompId) {
+      showToast("Pick a competition first.", "warn")
+      return
+    }
+    const code = judgePasscodeInput.trim()
+    if (!code) {
+      setJudgePasscodeMsg("Enter a passcode to update.")
+      setTimeout(() => setJudgePasscodeMsg(""), 2000)
+      return
+    }
+
+    setJudgePasscodeSaving(true)
+    setJudgePasscodeMsg("")
+    try {
+      const response = await fetch("/api/judge-passcode", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ compId: selectedCompId, passcode: code }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error((data as { error?: string } | null)?.error || "Failed to update passcode.")
+      }
+
+      setJudgePasscodeInput("")
+      setJudgePasscodeMsg("Passcode updated. New sessions last 6 hours.")
+      showToast("Judge passcode updated.", "ok")
+      await loadCompetitionDetail(selectedCompId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update passcode."
+      setJudgePasscodeMsg(message)
+      showToast(message, "warn")
+    } finally {
+      setJudgePasscodeSaving(false)
     }
   }
 
@@ -1215,6 +1277,48 @@ function SetupInterface() {
                   Save Competition Settings
                 </button>
                 {editMsg && <span className="text-sm text-gray-300">{editMsg}</span>}
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-border bg-panel/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xl font-semibold">Judge passcode</h3>
+                    <p className="text-sm text-gray-400">
+                      Judges sign in with this code. Sessions last 6 hours and old codes expire when you
+                      update it.
+                    </p>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {selectedComp.judgePasscodeUpdatedAt
+                      ? `Last set ${formatDateTime(selectedComp.judgePasscodeUpdatedAt)}`
+                      : "Not set yet"}
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                  <label className="flex flex-col gap-2 text-sm text-gray-400">
+                    New passcode
+                    <input
+                      type="password"
+                      className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
+                      placeholder="Enter a code judges will type"
+                      value={judgePasscodeInput}
+                      onChange={(e) => setJudgePasscodeInput(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleUpdateJudgePasscode}
+                    disabled={judgePasscodeSaving}
+                    className="h-[42px] min-w-[160px] rounded-lg border border-[#27a9e1] bg-[#27a9e1] px-4 text-sm font-semibold text-[#031726] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {judgePasscodeSaving ? "Saving…" : "Save passcode"}
+                  </button>
+                </div>
+                {judgePasscodeMsg && <div className="text-sm text-gray-300">{judgePasscodeMsg}</div>}
+                <p className="text-xs text-gray-500">
+                  Share this code with judges for the selected competition. They can reuse the same code, and
+                  their access ends after 6 hours or when you change it here.
+                </p>
               </div>
 
               <hr className="border-[#19bcd6]/30" />
