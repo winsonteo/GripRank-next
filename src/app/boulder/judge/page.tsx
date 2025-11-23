@@ -1,15 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from "react";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useEffect, useState, useRef, useMemo, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import Container from "@/components/Container";
-import AccessDenied from "@/components/AccessDenied";
 import { firestore } from "@/lib/firebase/client";
-import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
-import { useUserRole, isJudgeRole } from "@/hooks/useUserRole";
+import { useJudgePasscodeSession } from "@/hooks/useJudgePasscodeSession";
 import {
   collection,
   getDocs,
@@ -85,55 +82,35 @@ interface AttemptRecord {
 
 type RoundType = "qualification" | "final";
 
+type JudgeAuthState = ReturnType<typeof useJudgePasscodeSession>;
+
 export default function JudgePage() {
-  const { isSignedIn, isLoaded } = useUser();
+  const authState = useJudgePasscodeSession()
 
-  // Authenticate with Firebase using Clerk session
-  const { isFirebaseAuthenticated, error: firebaseError } = useFirebaseAuth();
-
-  // Check user role for access control
-  // ALLOWED ROLES: judge, staff, admin
-  // Source: Firebase custom token claims from /api/auth/firebase-token
-  const { role, loading: roleLoading } = useUserRole();
-
-  // ROLE-BASED ACCESS CONTROL
-  // Show loading state while checking authentication and role
-  // Wait for:
-  // 1. Clerk to load
-  // 2. Firebase auth to complete (if Clerk is signed in)
-  // 3. Role to be fetched from token claims
-  const waitingForFirebaseAuth = isSignedIn && !isFirebaseAuthenticated && !firebaseError;
-
-  if (!isLoaded || waitingForFirebaseAuth || roleLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 text-lg">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Access denied for users without judge/staff/admin role
-  // This prevents viewers from seeing judge UI (they can't write attempts anyway due to Firestore rules)
-  if (!isJudgeRole(role)) {
-    return <AccessDenied feature="Judge Panel" />;
-  }
-
-  // User has correct role - render judge interface
-  return <JudgeInterface />;
+  return <JudgeInterface authState={authState} />
 }
 
 /**
  * JudgeInterface - The actual judge pad UI
  * Separated from JudgePage to keep role gating logic clean and easy to find
  */
-function JudgeInterface() {
-  const { user, isLoaded } = useUser();
+function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
+  const {
+    session,
+    loading: authLoading,
+    signingIn,
+    error: authError,
+    signInWithPasscode,
+    signOutJudge,
+    clearError,
+  } = authState
 
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [competitionsLoading, setCompetitionsLoading] = useState(true);
   const [selectedComp, setSelectedComp] = useState("");
+
+  const [passcodeInput, setPasscodeInput] = useState("")
+  const [authNotice, setAuthNotice] = useState("")
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -194,6 +171,10 @@ function JudgeInterface() {
 
   // Handle judge station change confirmation
   const handleStationChange = (type: 'comp' | 'category' | 'round' | 'route' | 'detail', value: string) => {
+    if (type === 'comp' && session?.authType === 'judge-passcode' && session.compId && value !== session.compId) {
+      return
+    }
+
     // Skip confirmation for initial auto-selections
     const isInitialSelection = (
       (type === 'comp' && !initialSelectionsRef.current.usedComp) ||
@@ -256,15 +237,37 @@ function JudgeInterface() {
     setPendingChange(null);
   };
 
+  const handlePasscodeSubmit = async (event?: FormEvent) => {
+    event?.preventDefault()
+    clearError()
+    setAuthNotice("")
+    if (!selectedComp) {
+      setAuthNotice("Select a competition first.")
+      return
+    }
+    if (!passcodeInput.trim()) {
+      setAuthNotice("Enter the judge passcode.")
+      return
+    }
+    try {
+      await signInWithPasscode(selectedComp, passcodeInput.trim())
+      setAuthNotice("Signed in. Loading station…")
+      setPasscodeInput("")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to sign in"
+      setAuthNotice(message)
+    }
+  }
+
   // Load competitions on mount
   useEffect(() => {
-    if (!firestore) return;
-    const db = firestore; // Capture non-null value for TypeScript
+    if (!firestore) return
+    const db = firestore // Capture non-null value for TypeScript
 
     const loadCompetitions = async () => {
-      setCompetitionsLoading(true);
+      setCompetitionsLoading(true)
       try {
-        const snapshot = await getDocs(collection(db, "boulderComps"));
+        const snapshot = await getDocs(collection(db, "boulderComps"))
         const comps = snapshot.docs
           .map((doc) => ({
             id: doc.id,
@@ -274,36 +277,39 @@ function JudgeInterface() {
             !["archived", "deleted"].includes(
               (comp.status || "").toString().toLowerCase()
             )
-          ) as Competition[];
+          ) as Competition[]
         comps.sort(
           (a, b) => {
             const getTime = (timestamp: unknown): number => {
-              if (!timestamp) return 0;
-              if (typeof timestamp === 'number') return timestamp;
-              if (typeof (timestamp as { toMillis?: () => number }).toMillis === 'function') {
-                return (timestamp as { toMillis: () => number }).toMillis();
+              if (!timestamp) return 0
+              if (typeof timestamp === "number") return timestamp
+              if (typeof (timestamp as { toMillis?: () => number }).toMillis === "function") {
+                return (timestamp as { toMillis: () => number }).toMillis()
               }
-              return 0;
-            };
-            return getTime(b.updatedAt) - getTime(a.updatedAt);
+              return 0
+            }
+            return getTime(b.updatedAt) - getTime(a.updatedAt)
           }
-        );
-        setCompetitions(comps);
+        )
+        setCompetitions(comps)
 
-        // Auto-select first competition if available
-        if (comps.length > 0 && !initialSelectionsRef.current.usedComp) {
-          setSelectedComp(comps[0].id);
-          initialSelectionsRef.current.usedComp = true;
+        // Auto-select session competition if present, otherwise first available
+        if (session?.compId && comps.find((comp) => comp.id === session.compId)) {
+          setSelectedComp(session.compId)
+          initialSelectionsRef.current.usedComp = true
+        } else if (comps.length > 0 && !initialSelectionsRef.current.usedComp) {
+          setSelectedComp(comps[0].id)
+          initialSelectionsRef.current.usedComp = true
         }
       } catch (error) {
-        console.error("Error loading competitions:", error);
+        console.error("Error loading competitions:", error)
       } finally {
-        setCompetitionsLoading(false);
+        setCompetitionsLoading(false)
       }
-    };
+    }
 
-    loadCompetitions();
-  }, []);
+    loadCompetitions()
+  }, [session?.compId])
 
   // Load categories when competition changes
   useEffect(() => {
@@ -739,7 +745,7 @@ function JudgeInterface() {
         detailIndex: round === "qualification" ? detailIndex : undefined,
         symbol: selectedSymbol,
         stationId: `station_${selectedRoute}`,
-        enteredBy: user?.id || null,
+        enteredBy: session?.uid || null,
         clientAt: serverTimestamp(),
         clientAtMs: Date.now(),
         offline: false,
@@ -824,6 +830,20 @@ function JudgeInterface() {
     return "";
   };
 
+  const isCompLocked = session?.authType === "judge-passcode" && !!session?.compId
+
+  const sessionExpiresLabel = useMemo(() => {
+    if (!session?.sessionExpiresAt) return ""
+    const date = new Date(session.sessionExpiresAt)
+    if (Number.isNaN(date.getTime())) return ""
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }, [session?.sessionExpiresAt])
+
   // Generate context summary
   const contextSummary = useMemo(() => {
     const compText = selectedComp ? getSelectedLabel(competitions, selectedComp) || "Comp?" : "Comp?";
@@ -840,14 +860,99 @@ function JudgeInterface() {
     return parts.join(" • ");
   }, [selectedComp, selectedCategory, selectedRoute, selectedDetail, round, competitions, categories, routes, details]);
 
-  if (!isLoaded || !firestore) {
+  if (!firestore) {
     return (
       <main className="py-12 text-foreground bg-background min-h-screen">
         <Container>
-          <div className="text-center">Loading...</div>
+          <div className="text-center">Firebase is not configured for this client.</div>
         </Container>
       </main>
-    );
+    )
+  }
+
+  if (authLoading) {
+    return (
+      <main className="py-12 text-foreground bg-background min-h-screen">
+        <Container>
+          <div className="text-center">Checking judge session…</div>
+        </Container>
+      </main>
+    )
+  }
+
+  const authMessage = authError || authNotice
+
+  if (!session) {
+    return (
+      <main className="py-12 text-foreground bg-background min-h-screen">
+        <Container className="max-w-xl space-y-6">
+          <div className="rounded-2xl border border-border bg-panel p-6 shadow-lg shadow-black/30 space-y-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.2em] text-blue-400">Judge access</p>
+              <h1 className="mt-2 text-3xl font-bold">Enter the judge code for your competition</h1>
+              <p className="text-sm text-muted-foreground">
+                Codes last 6 hours and are tied to a single competition. Changing the code in admin ends old sessions.
+              </p>
+            </div>
+            <form className="space-y-4" onSubmit={handlePasscodeSubmit}>
+              <label className="block text-sm font-medium text-muted-foreground">
+                Competition
+                <select
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
+                  value={selectedComp}
+                  onChange={(e) => {
+                    setSelectedComp(e.target.value)
+                    setAuthNotice("")
+                    clearError()
+                  }}
+                  disabled={competitionsLoading}
+                >
+                  <option value="">
+                    {competitionsLoading ? "Loading..." : "Select competition"}
+                  </option>
+                  {competitions.map((comp) => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name || comp.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium text-muted-foreground">
+                Judge code
+                <input
+                  type="password"
+                  className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none"
+                  placeholder="Enter the code from admin"
+                  value={passcodeInput}
+                  onChange={(e) => {
+                    setPasscodeInput(e.target.value)
+                    setAuthNotice("")
+                    clearError()
+                  }}
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={signingIn || !selectedComp}
+                className="w-full rounded-xl border border-blue-500 bg-blue-500 px-4 py-3 text-sm font-semibold text-blue-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {signingIn ? "Signing in…" : "Enter judge pad"}
+              </button>
+            </form>
+            {authMessage && (
+              <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                {authMessage}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Need a new code? Go to Boulder Setup &gt; Judge passcode and set a fresh code for this competition.
+            </p>
+          </div>
+        </Container>
+      </main>
+    )
   }
 
   return (
@@ -874,10 +979,25 @@ function JudgeInterface() {
             <span className="text-muted-foreground">Judge Console</span>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="truncate max-w-[240px]">
-              {user?.emailAddresses[0]?.emailAddress || "Signed in"}
+            <span className="truncate max-w-[260px]">
+              {session.authType === "judge-passcode"
+                ? `Judge code for ${getSelectedLabel(competitions, selectedComp || session.compId || "") || selectedComp || session.compId || "competition"}`
+                : session.role
+                  ? `Signed in as ${session.role}`
+                  : "Signed in"}
             </span>
-            <UserButton afterSignOutUrl="/" />
+            {sessionExpiresLabel && (
+              <span className="rounded-full bg-input px-2 py-1 text-xs text-muted-foreground">
+                Expires {sessionExpiresLabel}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => signOutJudge()}
+              className="rounded-lg border border-border bg-input px-3 py-2 text-xs font-semibold hover:bg-input/80"
+            >
+              Change code
+            </button>
           </div>
         </header>
 
@@ -905,7 +1025,7 @@ function JudgeInterface() {
                   className="mt-1 w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none disabled:opacity-50"
                   value={selectedComp}
                   onChange={(e) => handleStationChange('comp', e.target.value)}
-                  disabled={competitionsLoading}
+                  disabled={competitionsLoading || isCompLocked}
                 >
                   <option value="">
                     {competitionsLoading ? "Loading..." : "Select competition"}
@@ -916,6 +1036,11 @@ function JudgeInterface() {
                     </option>
                   ))}
                 </select>
+                {isCompLocked && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Locked to your judge code&apos;s competition.
+                  </p>
+                )}
               </label>
 
               <label className="block text-sm font-medium text-muted-foreground">
