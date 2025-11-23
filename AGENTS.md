@@ -3,6 +3,10 @@
 This file is for AI/code assistants working on this repository.  
 When in doubt, **ask for clarification before making risky changes**, especially around scoring and live competition flows.
 
+**Working scope and coordination**
+- Only work inside `/Users/winson/Projects/griprank-next-codex`.
+- Claude may be editing in a separate terminal; check `git status` before/after changes, avoid rebases/amends, and never overwrite others’ work. If you see unexpected changes, pause and ask.
+
 ---
 
 ## Project Overview
