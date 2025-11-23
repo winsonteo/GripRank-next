@@ -64,7 +64,9 @@ export function useJudgePasscodeSession() {
       try {
         const parsed = await parseSessionFromUser(user)
         if (!parsed) {
-          await signOut(firebaseAuth)
+          if (firebaseAuth) {
+            await signOut(firebaseAuth)
+          }
           setSession(null)
           setError("You do not have judge access. Use a judge code to continue.")
           setLoading(false)
@@ -96,7 +98,9 @@ export function useJudgePasscodeSession() {
     setError(null)
     try {
       // Clear any existing Firebase user before switching sessions
-      await signOut(firebaseAuth).catch(() => null)
+      if (firebaseAuth) {
+        await signOut(firebaseAuth).catch(() => null)
+      }
 
       const response = await fetch("/api/judge-passcode", {
         method: "POST",

@@ -27,8 +27,6 @@ export default function AccessDenied({
   feature = 'this page',
   message
 }: AccessDeniedProps) {
-  const pathname = usePathname();
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
