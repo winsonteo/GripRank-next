@@ -6,6 +6,8 @@ const isProtectedRoute = createRouteMatcher([
   '/boulder/judge(.*)',
   '/boulder/chief(.*)',
   '/boulder/setup(.*)',
+  '/boulder/import(.*)',
+  '/boulder/scorecards(.*)',
   '/lead/judge(.*)',
   '/speed/judge(.*)',
   '/admin(.*)',
