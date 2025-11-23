@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useUser } from "@clerk/nextjs"
+import Image from "next/image"
+import { UserButton, useUser } from "@clerk/nextjs"
 import {
   collection,
   deleteDoc,
@@ -99,6 +100,8 @@ export default function SetupPage() {
 }
 
 function SetupInterface() {
+  const { user } = useUser()
+
   const [toast, setToast] = useState<{ message: string; tone?: "info" | "ok" | "warn" } | null>(
     null
   )
@@ -925,49 +928,51 @@ function SetupInterface() {
   const selectedPhaseConfig = ROUTE_PHASE_CONFIG[routePhase]
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-gray-100">
-      <div className="border-b border-[#19bcd6]/30 bg-[#0e1730]">
-        <Container className="py-10">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-[#27a9e1]">Boulder Setup</p>
-              <h1 className="mt-2 text-4xl md:text-5xl font-black leading-tight">
-                Create and manage competitions
-              </h1>
-              <p className="mt-3 text-gray-400 max-w-2xl">
-                Staff/Admin only. Use this to create comps, manage categories, route counts, and
-                rename routes for judges and scoreboards.
-              </p>
+    <main className="py-6 min-h-screen bg-[#0b1220] text-gray-200">
+      <Container>
+        <div className="max-w-[1100px] mx-auto space-y-6">
+          {/* Header - Consistent with Judge/Chief pages */}
+          <header className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Link href="/" className="inline-block">
+                <Image
+                  src="/logo_header.png"
+                  alt="GripRank"
+                  width={4001}
+                  height={1228}
+                  priority
+                  className="h-11 w-auto"
+                />
+              </Link>
+              <span className="text-gray-400">Boulder Setup</span>
             </div>
-            <Link
-              href="/boulder/judge"
-              className="hidden md:inline-flex items-center gap-2 rounded-lg border border-[#19bcd6] bg-[#101a34] px-4 py-2 text-sm text-gray-200 hover:bg-[#19bcd6]/10"
-            >
-              Go to Judge Panel
-            </Link>
-          </div>
-        </Container>
-      </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
+              <span className="truncate max-w-[240px]">
+                {user?.emailAddresses[0]?.emailAddress || 'Signed in'}
+              </span>
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </header>
 
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-20">
-          <div
-            className={`rounded-xl px-4 py-3 shadow-lg ${
-              toast.tone === "ok"
-                ? "bg-green-100 text-green-900 border border-green-200"
-                : toast.tone === "warn"
-                  ? "bg-yellow-100 text-yellow-900 border border-yellow-200"
-                  : "bg-[#0e1730] text-gray-100 border border-[#19bcd6]"
-            }`}
-          >
-            {toast.message}
-          </div>
-        </div>
-      )}
+          {/* Toast notification */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-20">
+              <div
+                className={`rounded-xl px-4 py-3 shadow-lg ${
+                  toast.tone === "ok"
+                    ? "bg-green-100 text-green-900 border border-green-200"
+                    : toast.tone === "warn"
+                      ? "bg-yellow-100 text-yellow-900 border border-yellow-200"
+                      : "bg-[#0e1730] text-gray-100 border border-[#19bcd6]"
+                }`}
+              >
+                {toast.message}
+              </div>
+            </div>
+          )}
 
-      <Container className="py-10 space-y-10">
-        {/* Create competition */}
-        <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
+          {/* Create competition */}
+          <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-100">Create Boulder Competition</h2>
@@ -1046,7 +1051,7 @@ function SetupInterface() {
             <button
               type="button"
               onClick={handleCreateCompetition}
-              className="rounded-lg bg-[#19bcd6] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#27a9e1]"
+              className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold"
             >
               Create Competition
             </button>
@@ -1205,7 +1210,7 @@ function SetupInterface() {
                 <button
                   type="button"
                   onClick={handleSaveSettings}
-                  className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:opacity-90"
+                  className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold"
                 >
                   Save Competition Settings
                 </button>
@@ -1423,7 +1428,7 @@ function SetupInterface() {
                     type="button"
                     onClick={handleSaveRouteRename}
                     disabled={!routeHasChanges || routeRenameSaving}
-                    className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {routeRenameSaving ? "Saving…" : "Save Route Names"}
                   </button>
@@ -1439,7 +1444,8 @@ function SetupInterface() {
             </div>
           )}
         </section>
+        </div>
       </Container>
-    </div>
+    </main>
   )
 }
