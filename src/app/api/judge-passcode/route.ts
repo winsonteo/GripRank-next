@@ -42,8 +42,11 @@ export async function POST(req: Request) {
       compRef.collection("private").doc("judgePasscode").get(),
     ])
 
+    const genericError = () =>
+      NextResponse.json({ error: "Invalid competition or passcode." }, { status: 401 })
+
     if (!compSnap.exists) {
-      return NextResponse.json({ error: "Competition not found" }, { status: 404 })
+      return genericError()
     }
 
     const compData = compSnap.data() || {}
@@ -52,15 +55,12 @@ export async function POST(req: Request) {
     const passcodeVersion = compData.judgePasscodeVersion || passcodeData.judgePasscodeVersion
 
     if (!storedHash || !passcodeVersion) {
-      return NextResponse.json(
-        { error: "Judge passcode not set for this competition" },
-        { status: 400 }
-      )
+      return genericError()
     }
 
     const incomingHash = hashPasscode(passcode)
     if (incomingHash !== storedHash) {
-      return NextResponse.json({ error: "Invalid passcode" }, { status: 401 })
+      return genericError()
     }
 
     const expiresAt = Date.now() + SESSION_DURATION_MS

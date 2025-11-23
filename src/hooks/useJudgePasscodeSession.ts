@@ -133,6 +133,17 @@ export function useJudgePasscodeSession() {
     setSession(null)
   }, [])
 
+  const invalidateSession = useCallback(
+    async (message?: string) => {
+      if (firebaseAuth) {
+        await signOut(firebaseAuth).catch(() => null)
+      }
+      setSession(null)
+      if (message) setError(message)
+    },
+    []
+  )
+
   return {
     session,
     loading,
@@ -140,6 +151,7 @@ export function useJudgePasscodeSession() {
     error,
     signInWithPasscode,
     signOutJudge,
+    invalidateSession,
     clearError: () => setError(null),
   }
 }
