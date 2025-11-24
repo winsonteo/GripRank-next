@@ -89,7 +89,9 @@ function AdminInterface() {
     if (!firestore) return
     async function loadComps() {
       try {
-        const snap = await getDocs(collection(firestore, "boulderComps"))
+        const db = firestore
+        if (!db) return
+        const snap = await getDocs(collection(db, "boulderComps"))
         const list = snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as { name?: string; status?: string; updatedAt?: { seconds?: number } }) }))
           .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
@@ -111,12 +113,14 @@ function AdminInterface() {
       setLoadingChecks(true)
       setLoadError(null)
       try {
-        const compSnap = await getDoc(doc(firestore, "boulderComps", selectedComp))
+        const db = firestore
+        if (!db) return
+        const compSnap = await getDoc(doc(db, "boulderComps", selectedComp))
         const compData = compSnap.data() || {}
         setStatusLabel(normalizeStatusLabel((compData as { status?: string }).status))
 
         // Categories
-        const catsSnap = await getDocs(collection(firestore, `boulderComps/${selectedComp}/categories`))
+        const catsSnap = await getDocs(collection(db, `boulderComps/${selectedComp}/categories`))
         const categories = catsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }))
         setCategoriesCount(categories.length)
 
@@ -125,10 +129,10 @@ function AdminInterface() {
         let missingRouteCats = 0
         for (const cat of categories) {
           let catRoutes = 0
-          const qualSnap = await getDocs(collection(firestore, `boulderComps/${selectedComp}/categories/${cat.id}/routes`))
+          const qualSnap = await getDocs(collection(db, `boulderComps/${selectedComp}/categories/${cat.id}/routes`))
           catRoutes += qualSnap.size
           const finalSnap = await getDocs(
-            collection(firestore, `boulderComps/${selectedComp}/categories/${cat.id}/finalRoutes`)
+            collection(db, `boulderComps/${selectedComp}/categories/${cat.id}/finalRoutes`)
           )
           catRoutes += finalSnap.size
           if (catRoutes === 0) missingRouteCats += 1
@@ -138,7 +142,7 @@ function AdminInterface() {
         setRoutesMissingCategories(missingRouteCats)
 
         // Athletes
-        const athletesSnap = await getDocs(collection(firestore, `boulderComps/${selectedComp}/athletes`))
+        const athletesSnap = await getDocs(collection(db, `boulderComps/${selectedComp}/athletes`))
         setAthletesCount(athletesSnap.size)
       } catch (err) {
         console.error(err)
