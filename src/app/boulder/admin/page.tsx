@@ -264,12 +264,6 @@ function AdminInterface() {
     },
   ]
 
-  const alerts: AlertItem[] = [
-    { id: "no-routes", text: "No routes configured for Youth C Girls.", href: "/boulder/setup", tone: "warn" },
-    { id: "no-bibs", text: "8 athletes have no bib number.", href: "/boulder/import", tone: "warn" },
-    { id: "scorecards", text: "Scorecards have not been generated yet.", href: "/boulder/scorecards", tone: "info" },
-  ]
-
   return (
     <main className="py-6 min-h-screen bg-[#0b1220] text-gray-200">
       <Container>
