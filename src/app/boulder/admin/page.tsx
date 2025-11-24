@@ -7,7 +7,9 @@ import AccessDenied from "@/components/AccessDenied"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth"
 import { useUserRole, isStaffRole } from "@/hooks/useUserRole"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { collection, doc, getDoc, getDocs } from "firebase/firestore"
+import { firestore } from "@/lib/firebase/client"
 
 type SetupItem = {
   id: string
@@ -31,6 +33,14 @@ type AlertItem = {
   text: string
   href: string
   tone?: "info" | "warn"
+}
+
+function normalizeStatusLabel(raw?: string) {
+  const value = (raw || "").toLowerCase()
+  if (value === "live") return "Live"
+  if (value === "completed") return "Completed"
+  if (value === "archived") return "Archived"
+  return "Setup"
 }
 
 export default function BoulderAdminPage() {
@@ -65,53 +75,167 @@ export default function BoulderAdminPage() {
 function AdminInterface() {
   const { user } = useUser()
 
-  // Mocked selections and status; to be wired to Firestore later
-  const [selectedComp, setSelectedComp] = useState("youth-boulder-2025")
-  const competitions = useMemo(
-    () => [
-      { id: "youth-boulder-2025", name: "Youth Boulder Challenge 2025", status: "Setup" },
-      { id: "summer-open", name: "Summer Open", status: "Live" },
-    ],
-    []
-  )
-  const statusLabel = competitions.find((c) => c.id === selectedComp)?.status || "Setup"
+  const [comps, setComps] = useState<{ id: string; name?: string; status?: string; updatedAt?: { seconds?: number } }[]>([])
+  const [selectedComp, setSelectedComp] = useState<string>("")
+  const [statusLabel, setStatusLabel] = useState("Setup")
+  const [categoriesCount, setCategoriesCount] = useState(0)
+  const [routesCount, setRoutesCount] = useState(0)
+  const [routesMissingCategories, setRoutesMissingCategories] = useState(0)
+  const [athletesCount, setAthletesCount] = useState(0)
+  const [loadingChecks, setLoadingChecks] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!firestore) return
+    async function loadComps() {
+      try {
+        const snap = await getDocs(collection(firestore, "boulderComps"))
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as { name?: string; status?: string; updatedAt?: { seconds?: number } }) }))
+          .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
+        setComps(list)
+        if (!selectedComp && list.length) {
+          setSelectedComp(list[0].id)
+          setStatusLabel(normalizeStatusLabel(list[0].status))
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    loadComps()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedComp || !firestore) return
+    async function loadMeta() {
+      setLoadingChecks(true)
+      setLoadError(null)
+      try {
+        const compSnap = await getDoc(doc(firestore, "boulderComps", selectedComp))
+        const compData = compSnap.data() || {}
+        setStatusLabel(normalizeStatusLabel((compData as { status?: string }).status))
+
+        // Categories
+        const catsSnap = await getDocs(collection(firestore, `boulderComps/${selectedComp}/categories`))
+        const categories = catsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }))
+        setCategoriesCount(categories.length)
+
+        // Routes across categories (qualification + final)
+        let totalRoutes = 0
+        let missingRouteCats = 0
+        for (const cat of categories) {
+          let catRoutes = 0
+          const qualSnap = await getDocs(collection(firestore, `boulderComps/${selectedComp}/categories/${cat.id}/routes`))
+          catRoutes += qualSnap.size
+          const finalSnap = await getDocs(
+            collection(firestore, `boulderComps/${selectedComp}/categories/${cat.id}/finalRoutes`)
+          )
+          catRoutes += finalSnap.size
+          if (catRoutes === 0) missingRouteCats += 1
+          totalRoutes += catRoutes
+        }
+        setRoutesCount(totalRoutes)
+        setRoutesMissingCategories(missingRouteCats)
+
+        // Athletes
+        const athletesSnap = await getDocs(collection(firestore, `boulderComps/${selectedComp}/athletes`))
+        setAthletesCount(athletesSnap.size)
+      } catch (err) {
+        console.error(err)
+        setLoadError("Failed to load setup status.")
+        setCategoriesCount(0)
+        setRoutesCount(0)
+        setRoutesMissingCategories(0)
+        setAthletesCount(0)
+      } finally {
+        setLoadingChecks(false)
+      }
+    }
+    loadMeta()
+  }, [selectedComp])
+
+  const checklist = useMemo(() => {
+    const hasCategories = categoriesCount > 0
+    const hasRoutes = routesCount > 0
+    const hasAthletes = athletesCount > 0
+    const scorecardsReady = hasRoutes && hasAthletes
+    const items: SetupItem[] = [
+      {
+        id: "categories",
+        label: hasCategories ? "Categories configured" : "No categories configured",
+        ok: hasCategories,
+        actionLabel: "View setup",
+        href: "/boulder/setup",
+      },
+      {
+        id: "routes",
+        label: hasRoutes
+          ? "Routes configured"
+          : routesMissingCategories > 0
+            ? `Routes missing in ${routesMissingCategories} categories`
+            : "No routes configured",
+        ok: hasRoutes,
+        actionLabel: "Go to setup",
+        href: "/boulder/setup",
+      },
+      {
+        id: "import",
+        label: hasAthletes ? "Athletes imported" : "No athletes imported",
+        ok: hasAthletes,
+        actionLabel: "Open import",
+        href: "/boulder/import",
+      },
+      {
+        id: "scorecards",
+        label: scorecardsReady ? "Scorecards ready" : "Scorecards not ready",
+        ok: scorecardsReady,
+        actionLabel: "Go to scorecards",
+        href: "/boulder/scorecards",
+      },
+    ]
+    return items
+  }, [categoriesCount, routesCount, routesMissingCategories, athletesCount])
+
+  const alerts = useMemo(() => {
+    const list: AlertItem[] = []
+    if (loadError) {
+      list.push({ id: "load-error", text: loadError, href: "/boulder/setup", tone: "warn" })
+      return list
+    }
+    if (categoriesCount === 0) {
+      list.push({ id: "no-categories", text: "No categories configured for this competition.", href: "/boulder/setup", tone: "warn" })
+    }
+    if (routesCount === 0) {
+      list.push({ id: "no-routes", text: "No routes configured yet.", href: "/boulder/setup", tone: "warn" })
+    }
+    if (athletesCount === 0) {
+      list.push({ id: "no-athletes", text: "No athletes imported.", href: "/boulder/import", tone: "warn" })
+    }
+    if (!(routesCount > 0 && athletesCount > 0)) {
+      list.push({
+        id: "scorecards-maybe",
+        text: "Scorecards may not be ready.",
+        href: "/boulder/scorecards",
+        tone: "info",
+      })
+    }
+    if (!list.length) {
+      list.push({ id: "all-good", text: "No issues detected.", href: "/boulder/setup", tone: "info" })
+    }
+    return list
+  }, [categoriesCount, routesCount, athletesCount, loadError])
+
+  const selectedCompName =
+    comps.find((c) => c.id === selectedComp)?.name || selectedComp || "No competition selected"
+
   const statusTone =
     statusLabel.toLowerCase() === "live"
       ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
-      : statusLabel.toLowerCase() === "setup"
-        ? "bg-amber-500/15 text-amber-200 border border-amber-400/40"
-        : "bg-neutral-700/40 text-neutral-200 border border-neutral-500/40"
+    : statusLabel.toLowerCase() === "setup"
+      ? "bg-amber-500/15 text-amber-200 border border-amber-400/40"
+      : "bg-neutral-700/40 text-neutral-200 border border-neutral-500/40"
 
-  const setupItems: SetupItem[] = [
-    {
-      id: "categories",
-      label: "Categories configured",
-      ok: true,
-      actionLabel: "View setup",
-      href: "/boulder/setup",
-    },
-    {
-      id: "routes",
-      label: "Routes missing in 2 categories",
-      ok: false,
-      actionLabel: "Go to setup",
-      href: "/boulder/setup",
-    },
-    {
-      id: "import",
-      label: "Athletes imported",
-      ok: true,
-      actionLabel: "Open import",
-      href: "/boulder/import",
-    },
-    {
-      id: "scorecards",
-      label: "Scorecards not printed",
-      ok: false,
-      actionLabel: "Go to scorecards",
-      href: "/boulder/scorecards",
-    },
-  ]
+  const setupItems = checklist
 
   const stations: Station[] = [
     {
@@ -185,8 +309,10 @@ function AdminInterface() {
                   className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
                   value={selectedComp}
                   onChange={(e) => setSelectedComp(e.target.value)}
+                  disabled={!comps.length}
                 >
-                  {competitions.map((c) => (
+                  <option value="">{comps.length ? "Select competition" : "Loading competitions…"}</option>
+                  {comps.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name || c.id}
                     </option>
@@ -202,9 +328,11 @@ function AdminInterface() {
               <div className="flex items-center justify-between gap-2 mb-4">
                 <div>
                   <h2 className="text-xl font-bold text-gray-100">
-                    Setup: {competitions.find((c) => c.id === selectedComp)?.name || "No competition selected"}
+                    Setup: {selectedCompName}
                   </h2>
-                  <p className="text-sm text-gray-400">Check setup health before you go live.</p>
+                  <p className="text-sm text-gray-400">
+                    {loadingChecks ? "Loading setup status…" : "Check setup health before you go live."}
+                  </p>
                 </div>
               </div>
               <div className="mt-4 divide-y divide-[#19bcd6]/30 rounded-xl border border-[#19bcd6]/50 bg-[#101a34]/40">
