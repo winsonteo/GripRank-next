@@ -280,9 +280,24 @@ function AdminInterface() {
           ...doc.data(),
         })) as (JudgeStationDoc & { stationKey: string })[]
 
-        // Convert to view models with labels
+        const now = new Date()
+        const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000)
+
+        // Convert to view models with labels, filtering out expired stations
         const stationViews: JudgeStationView[] = stationDocs
-          .filter((s) => s.ready === true)
+          .filter((s) => {
+            if (!s.ready) return false
+
+            // Filter out stations older than 15 minutes
+            if (s.updatedAt) {
+              const updatedDate = s.updatedAt.toDate()
+              if (updatedDate < fifteenMinutesAgo) {
+                return false
+              }
+            }
+
+            return true
+          })
           .map((s) => {
             // Resolve category name
             const category = categories.get(s.categoryId)

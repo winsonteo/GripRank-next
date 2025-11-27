@@ -953,13 +953,23 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
     return generateStationKey(currentStationConfig);
   }, [currentStationConfig]);
 
-  // Reset station confirmation when station config changes
+  // Reset station confirmation when station config changes or after 15 minutes
   useEffect(() => {
     if (currentStationKey !== confirmedStationKey) {
       setIsStationConfirmed(false);
       setStationConfirmError("");
     }
-  }, [currentStationKey, confirmedStationKey]);
+
+    // Auto-expire confirmation after 15 minutes
+    if (isStationConfirmed) {
+      const timer = setTimeout(() => {
+        setIsStationConfirmed(false);
+        setConfirmedStationKey(null);
+      }, 15 * 60 * 1000); // 15 minutes
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentStationKey, confirmedStationKey, isStationConfirmed]);
 
   // Station confirmation labels for display
   const stationDisplayLabels = useMemo(() => {
