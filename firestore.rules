@@ -15,24 +15,18 @@ service cloud.firestore {
 
     // Passcode-based judges only (comp-scoped, versioned, expiring)
     function isJudgeForComp(compId) {
-      if (!isSignedIn()) { return false; }
-
-      // Staff/admin tokens (Clerk-issued) remain fully trusted
-      if (isAdminOrStaff()) { return true; }
-
-      if (request.auth.token.authType == 'judge-passcode') {
-        let compVersion = get(/databases/$(db)/documents/boulderComps/$(compId)).data.judgePasscodeVersion;
-
-        return request.auth.token.role == 'judge'
-               && request.auth.token.compId == compId
-               && request.auth.token.passcodeVersion is string
-               && compVersion is string
-               && request.auth.token.passcodeVersion == compVersion
-               && request.auth.token.sessionExpiresAt is int
-               && request.time.toMillis() <= request.auth.token.sessionExpiresAt;
-      }
-
-      return false;
+      return isSignedIn() && (
+        isAdminOrStaff() || (
+          request.auth.token.authType == 'judge-passcode' &&
+          request.auth.token.role == 'judge' &&
+          request.auth.token.compId == compId &&
+          request.auth.token.passcodeVersion is string &&
+          get(/databases/$(db)/documents/boulderComps/$(compId)).data.judgePasscodeVersion is string &&
+          request.auth.token.passcodeVersion == get(/databases/$(db)/documents/boulderComps/$(compId)).data.judgePasscodeVersion &&
+          request.auth.token.sessionExpiresAt is int &&
+          request.time.toMillis() <= request.auth.token.sessionExpiresAt
+        )
+      );
     }
 
     /* ================= BOULDER (boulderComps) ================= */
