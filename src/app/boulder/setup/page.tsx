@@ -147,6 +147,7 @@ function SetupInterface() {
 
   const [newCatId, setNewCatId] = useState("")
   const [newCatName, setNewCatName] = useState("")
+  const [showCreateForm, setShowCreateForm] = useState(false)
 
   const [judgePasscodeInput, setJudgePasscodeInput] = useState("")
   const [judgePasscodeMsg, setJudgePasscodeMsg] = useState("")
@@ -1035,91 +1036,104 @@ function SetupInterface() {
 
           {/* Create competition */}
           <section className="bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-100">Create Boulder Competition</h2>
-              <p className="text-gray-400 text-sm">Spin up a new boulder comp in a single step.</p>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-100">Create Boulder Competition</h2>
+                <p className="text-gray-400 text-sm">Spin up a new boulder comp in a single step.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {createMsg && <p className="text-sm text-gray-300">{createMsg}</p>}
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm((prev) => !prev)}
+                  className="rounded-lg border border-[#19bcd6] px-3 py-2 text-sm text-gray-100 hover:border-[#27a9e1] hover:text-[#27a9e1]"
+                >
+                  {showCreateForm ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
-            {createMsg && <p className="text-sm text-gray-300">{createMsg}</p>}
-          </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <label className="flex flex-col gap-2 text-sm text-gray-400">
-              Competition Name
-              <input
-                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
-                placeholder="My Boulder Open"
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-gray-400">
-              Competition ID (optional)
-              <input
-                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
-                placeholder="my-boulder-open"
-                value={createId}
-                onChange={(e) => setCreateId(e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-gray-400">
-              Event Date
-              <input
-                type="date"
-                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
-                value={createDate}
-                onChange={(e) => setCreateDate(e.target.value)}
-              />
-            </label>
-          </div>
+            {showCreateForm && (
+              <>
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <label className="flex flex-col gap-2 text-sm text-gray-400">
+                    Competition Name
+                    <input
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
+                      placeholder="My Boulder Open"
+                      value={createName}
+                      onChange={(e) => setCreateName(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm text-gray-400">
+                    Competition ID (optional)
+                    <input
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
+                      placeholder="my-boulder-open"
+                      value={createId}
+                      onChange={(e) => setCreateId(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm text-gray-400">
+                    Event Date
+                    <input
+                      type="date"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
+                      value={createDate}
+                      onChange={(e) => setCreateDate(e.target.value)}
+                    />
+                  </label>
+                </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm text-gray-400">
-              Qualifier Routes
-              <input
-                type="number"
-                min="1"
-                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
-                value={createQualCount}
-                onChange={(e) => setCreateQualCount(e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-gray-400">
-              Final Routes
-              <input
-                type="number"
-                min="1"
-                className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
-                value={createFinalCount}
-                onChange={(e) => setCreateFinalCount(e.target.value)}
-              />
-            </label>
-          </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-2 text-sm text-gray-400">
+                    Qualifier Routes
+                    <input
+                      type="number"
+                      min="1"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
+                      value={createQualCount}
+                      onChange={(e) => setCreateQualCount(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm text-gray-400">
+                    Final Routes
+                    <input
+                      type="number"
+                      min="1"
+                      className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1]"
+                      value={createFinalCount}
+                      onChange={(e) => setCreateFinalCount(e.target.value)}
+                    />
+                  </label>
+                </div>
 
-          <label className="mt-4 flex flex-col gap-2 text-sm text-gray-400">
-            Initial Categories (optional)
-            <textarea
-              className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1] min-h-[120px]"
-              placeholder="youthB_girls | Youth B Girls&#10;youthB_boys | Youth B Boys"
-              value={createCategories}
-              onChange={(e) => setCreateCategories(e.target.value)}
-            />
-          </label>
-          <p className="text-xs text-gray-500">
-            Format: <code>id | display name</code>. If you omit the id we&apos;ll slug the name for you.
-          </p>
+                <label className="mt-4 flex flex-col gap-2 text-sm text-gray-400">
+                  Initial Categories (optional)
+                  <textarea
+                    className="px-3 py-2.5 bg-[#101a34] text-gray-200 border border-[#19bcd6] rounded-lg focus:outline-none focus:border-[#27a9e1] min-h-[120px]"
+                    placeholder="youthB_girls | Youth B Girls&#10;youthB_boys | Youth B Boys"
+                    value={createCategories}
+                    onChange={(e) => setCreateCategories(e.target.value)}
+                  />
+                </label>
+                <p className="text-xs text-gray-500">
+                  Format: <code>id | display name</code>. If you omit the id we&apos;ll slug the name for you.
+                </p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleCreateCompetition}
-              className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold"
-            >
-              Create Competition
-            </button>
-            {createMsg && <span className="text-sm text-gray-300">{createMsg}</span>}
-          </div>
-        </section>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCreateCompetition}
+                    className="px-3 py-2.5 text-sm bg-[#27a9e1] border border-[#27a9e1] text-[#031726] rounded-lg hover:opacity-90 transition-opacity font-semibold"
+                  >
+                    Create Competition
+                  </button>
+                  {createMsg && <span className="text-sm text-gray-300">{createMsg}</span>}
+                </div>
+              </>
+            )}
+          </section>
 
         {/* Manage existing competition */}
         <section className="space-y-6 bg-[#0e1730] border border-[#19bcd6] rounded-xl p-5">

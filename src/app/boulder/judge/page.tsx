@@ -110,6 +110,7 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
     signInWithPasscode,
     signOutJudge,
     clearError,
+    invalidateSession,
   } = authState
 
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -356,7 +357,7 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
         if (session?.compId && comps.find((comp) => comp.id === session.compId)) {
           setSelectedComp(session.compId)
           initialSelectionsRef.current.usedComp = true
-        } else if (comps.length > 0 && !initialSelectionsRef.current.usedComp) {
+        } else if (!session?.compId && comps.length > 0 && !initialSelectionsRef.current.usedComp) {
           setSelectedComp(comps[0].id)
           initialSelectionsRef.current.usedComp = true
         }
@@ -822,7 +823,13 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
       console.error("Error saving attempt:", error);
-      setSaveMessage("Error saving attempt. Please try again.");
+      const code = (error as { code?: string } | null)?.code || ""
+      if (code.toLowerCase().includes("permission-denied")) {
+        setSaveMessage("Session expired or passcode changed. Please sign in again.")
+        invalidateSession("Session expired or passcode changed. Please enter the new code.")
+      } else {
+        setSaveMessage("Error saving attempt. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -991,6 +998,38 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
   }
 
   const authMessage = authError || authNotice
+
+  const sessionCompMissing =
+    !!session?.compId &&
+    !competitionsLoading &&
+    competitions.length > 0 &&
+    !competitions.find((comp) => comp.id === session.compId)
+
+  if (session && sessionCompMissing) {
+    return (
+      <main className="py-12 text-foreground bg-background min-h-screen">
+        <Container className="max-w-xl space-y-6">
+          <div className="rounded-2xl border border-border bg-panel p-6 shadow-lg shadow-black/30 space-y-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.2em] text-blue-400">Judge access</p>
+              <h1 className="mt-2 text-3xl font-bold text-foreground">Competition unavailable</h1>
+              <p className="text-sm text-muted-foreground">
+                The competition linked to your judge code is not available. It may have been removed or you no longer
+                have access. Please enter a new judge code.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => invalidateSession()}
+              className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-input/80"
+            >
+              Change code
+            </button>
+          </div>
+        </Container>
+      </main>
+    )
+  }
 
   if (!session) {
     return (
