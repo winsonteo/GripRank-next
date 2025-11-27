@@ -1261,11 +1261,18 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
                 </select>
               </label>
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-3">
+                <button
+                  onClick={handleConfirmStation}
+                  disabled={isConfirmingStation || !currentStationKey}
+                  className="flex-1 px-6 py-3 bg-amber-500 text-black rounded-xl font-semibold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  {isConfirmingStation ? "Confirming..." : isStationConfirmed ? "✓ Confirmed" : "Confirm station"}
+                </button>
                 <button
                   onClick={handleNextDetail}
                   disabled={!details.length || !selectedDetail}
-                  className="w-full px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="flex-1 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 >
                   Next Detail
                 </button>
