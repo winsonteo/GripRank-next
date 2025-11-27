@@ -14,10 +14,17 @@ import {
   orderBy,
   where,
   addDoc,
+  setDoc,
+  doc,
   serverTimestamp,
   onSnapshot,
   limit,
 } from "firebase/firestore";
+import {
+  generateStationKey,
+  isStationConfigComplete,
+  type StationConfig,
+} from "@/lib/boulder/judgeStations";
 
 // QR Scanner types
 interface BarcodeDetectorResult {
@@ -156,6 +163,12 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
     value: string;
   } | null>(null);
 
+  // Station confirmation state
+  const [isStationConfirmed, setIsStationConfirmed] = useState(false);
+  const [isConfirmingStation, setIsConfirmingStation] = useState(false);
+  const [stationConfirmError, setStationConfirmError] = useState("");
+  const [confirmedStationKey, setConfirmedStationKey] = useState<string | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -235,6 +248,52 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
   const handleCancelChange = () => {
     setShowConfirmDialog(false);
     setPendingChange(null);
+  };
+
+  // Handle station confirmation
+  const handleConfirmStation = async () => {
+    if (!firestore) {
+      setStationConfirmError("Firebase not available");
+      return;
+    }
+
+    if (!isStationConfigComplete(currentStationConfig)) {
+      console.error("Station config incomplete:", currentStationConfig);
+      setStationConfirmError("Please select all station settings first");
+      return;
+    }
+
+    setIsConfirmingStation(true);
+    setStationConfirmError("");
+
+    try {
+      const stationKey = generateStationKey(currentStationConfig);
+      const stationDocRef = doc(
+        firestore,
+        "boulderComps",
+        currentStationConfig.compId,
+        "judgeStations",
+        stationKey
+      );
+
+      await setDoc(stationDocRef, {
+        compId: currentStationConfig.compId,
+        round: currentStationConfig.round,
+        categoryId: currentStationConfig.categoryId,
+        detailIndex: currentStationConfig.detailIndex,
+        routeId: currentStationConfig.routeId,
+        ready: true,
+        updatedAt: serverTimestamp(),
+      });
+
+      setIsStationConfirmed(true);
+      setConfirmedStationKey(stationKey);
+    } catch (error) {
+      console.error("Error confirming station:", error);
+      setStationConfirmError("Failed to confirm station. You can continue judging.");
+    } finally {
+      setIsConfirmingStation(false);
+    }
   };
 
   const handlePasscodeSubmit = async (event?: FormEvent) => {
@@ -860,6 +919,57 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
     return parts.join(" • ");
   }, [selectedComp, selectedCategory, selectedRoute, selectedDetail, round, competitions, categories, routes, details]);
 
+  // Derive current station config
+  const currentStationConfig: Partial<StationConfig> = useMemo(() => {
+    // Get numeric detailIndex for qualification
+    let detailIndex: number | null = null;
+    if (round === "qualification" && selectedDetail) {
+      const selectedDetailObj = details.find(d => d.id === selectedDetail);
+      const detailValue = selectedDetailObj?.detailIndex || selectedDetailObj?.id || selectedDetail;
+      // Try to parse as number, fallback to using hash if not numeric
+      const parsed = parseInt(String(detailValue), 10);
+      detailIndex = Number.isNaN(parsed) ? detailValue.toString().length : parsed;
+    }
+
+    return {
+      compId: selectedComp || undefined,
+      round,
+      categoryId: selectedCategory || undefined,
+      detailIndex: round === "final" ? null : detailIndex,
+      routeId: selectedRoute || undefined,
+    };
+  }, [selectedComp, round, selectedCategory, selectedDetail, selectedRoute, details]);
+
+  // Compute current station key (null if config incomplete)
+  const currentStationKey = useMemo(() => {
+    if (!isStationConfigComplete(currentStationConfig)) return null;
+    return generateStationKey(currentStationConfig);
+  }, [currentStationConfig]);
+
+  // Reset station confirmation when station config changes
+  useEffect(() => {
+    if (currentStationKey !== confirmedStationKey) {
+      setIsStationConfirmed(false);
+      setStationConfirmError("");
+    }
+  }, [currentStationKey, confirmedStationKey]);
+
+  // Station confirmation labels for display
+  const stationDisplayLabels = useMemo(() => {
+    const categoryName = selectedCategory
+      ? getSelectedLabel(categories, selectedCategory) || selectedCategory
+      : "";
+    const routeLabel = selectedRoute
+      ? getSelectedLabel(routes, selectedRoute) || selectedRoute
+      : "";
+    const detailLabel = selectedDetail
+      ? getSelectedLabel(details, selectedDetail) || selectedDetail
+      : "";
+    const roundLabel = round === "final" ? "Final" : "Qualification";
+
+    return { categoryName, routeLabel, detailLabel, roundLabel };
+  }, [selectedCategory, categories, selectedRoute, routes, selectedDetail, details, round]);
+
   if (!firestore) {
     return (
       <main className="py-12 text-foreground bg-background min-h-screen">
@@ -1202,6 +1312,47 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
         {/* Record Attempt Panel */}
         <section className="rounded-2xl border border-border bg-panel p-6">
           <h2 className="text-2xl font-bold mb-4">Record Attempt</h2>
+
+          {/* Station Confirmation Banner */}
+          {currentStationKey && !isStationConfirmed && (
+            <div className="mb-4 p-4 rounded-xl border-2 border-amber-500/50 bg-amber-500/10">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-semibold text-amber-200">Station not confirmed</div>
+                  <div className="text-sm text-amber-100/80 mt-1">
+                    {stationDisplayLabels.categoryName}
+                    {round === "qualification" && stationDisplayLabels.detailLabel && ` · ${stationDisplayLabels.detailLabel}`}
+                    {round === "final" && " · Final"}
+                    {stationDisplayLabels.routeLabel && ` · ${stationDisplayLabels.routeLabel}`}
+                  </div>
+                </div>
+                <button
+                  onClick={handleConfirmStation}
+                  disabled={isConfirmingStation}
+                  className="px-4 py-2 rounded-lg bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {isConfirmingStation ? "Confirming..." : "Confirm station"}
+                </button>
+              </div>
+              {stationConfirmError && (
+                <div className="mt-2 text-sm text-red-300">{stationConfirmError}</div>
+              )}
+            </div>
+          )}
+
+          {currentStationKey && isStationConfirmed && (
+            <div className="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+              <div className="flex items-center gap-2 text-sm text-emerald-200">
+                <span className="text-emerald-400">✓</span>
+                <span>
+                  Station confirmed: {stationDisplayLabels.categoryName}
+                  {round === "qualification" && stationDisplayLabels.detailLabel && ` · ${stationDisplayLabels.detailLabel}`}
+                  {round === "final" && " · Final"}
+                  {stationDisplayLabels.routeLabel && ` · ${stationDisplayLabels.routeLabel}`}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Attempt Context */}
           <div className={`mb-4 p-4 rounded-xl border transition-all ${

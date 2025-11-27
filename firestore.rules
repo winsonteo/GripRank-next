@@ -96,6 +96,20 @@ service cloud.firestore {
         allow delete: if isAdminOrStaff();
       }
 
+      // Judge station confirmations
+      match /judgeStations/{stationKey} {
+        // Reads allowed for admin dashboard
+        allow read: if true;
+
+        // Writes restricted to judges for this competition
+        // Validates that the compId in the document matches the parent collection
+        allow create, update: if isJudgeForComp(compId)
+                              && request.resource.data.compId == compId
+                              && request.resource.data.round in ['qualification', 'final']
+                              && request.resource.data.ready == true;
+        allow delete: if isAdminOrStaff();
+      }
+
       // Private competition settings (e.g., judge passcodes)
       match /private/{docId} {
         allow read, write: if isAdminOrStaff();
