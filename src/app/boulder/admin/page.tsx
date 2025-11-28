@@ -8,8 +8,10 @@ import { UserButton, useUser } from "@clerk/nextjs"
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth"
 import { useUserRole, isStaffRole } from "@/hooks/useUserRole"
 import { useEffect, useMemo, useState } from "react"
-import { collection, doc, getDoc, getDocs } from "firebase/firestore"
+import { collection, doc, getDoc, getDocs, query, orderBy, onSnapshot } from "firebase/firestore"
+import type { Timestamp } from "firebase/firestore"
 import { firestore } from "@/lib/firebase/client"
+import type { JudgeStationView } from "@/lib/boulder/judgeStations"
 
 type SetupItem = {
   id: string
@@ -19,20 +21,40 @@ type SetupItem = {
   href: string
 }
 
-type Station = {
-  id: string
-  name: string
-  categoryName: string
-  detailLabel: string
-  routeLabel: string
-  ready: boolean
-}
-
 type AlertItem = {
   id: string
   text: string
   href: string
   tone?: "info" | "warn"
+}
+
+interface Category {
+  id: string
+  name?: string
+  order?: number
+}
+
+interface RouteDoc {
+  id: string
+  label?: string
+  order?: number
+}
+
+interface DetailDoc {
+  id: string
+  label?: string
+  detailIndex?: string
+  order?: number
+}
+
+interface JudgeStationDoc {
+  compId: string
+  round: "qualification" | "final"
+  categoryId: string
+  detailIndex: number | null
+  routeId: string
+  ready: boolean
+  updatedAt: Timestamp
 }
 
 function normalizeStatusLabel(raw?: string) {
@@ -85,6 +107,16 @@ function AdminInterface() {
   const [loadingChecks, setLoadingChecks] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  // Category/route lookup maps for judge stations label resolution
+  const [categories, setCategories] = useState<Map<string, Category>>(new Map())
+  const [routes, setRoutes] = useState<Map<string, RouteDoc>>(new Map())
+  const [finalRoutes, setFinalRoutes] = useState<Map<string, RouteDoc>>(new Map())
+  const [details, setDetails] = useState<Map<string, DetailDoc>>(new Map())
+
+  // Judge stations state
+  const [judgeStations, setJudgeStations] = useState<JudgeStationView[]>([])
+  const [stationsLoading, setStationsLoading] = useState(false)
+
   useEffect(() => {
     if (!firestore) return
     async function loadComps() {
@@ -105,7 +137,7 @@ function AdminInterface() {
       }
     }
     loadComps()
-  }, [])
+  }, [selectedComp])
 
   useEffect(() => {
     if (!selectedComp || !firestore) return
@@ -157,6 +189,159 @@ function AdminInterface() {
     }
     loadMeta()
   }, [selectedComp])
+
+  // Load categories, routes, details for judge stations label resolution
+  useEffect(() => {
+    if (!firestore || !selectedComp) {
+      setCategories(new Map())
+      setRoutes(new Map())
+      setFinalRoutes(new Map())
+      setDetails(new Map())
+      return
+    }
+    const db = firestore
+
+    const loadLookupData = async () => {
+      try {
+        // Load categories
+        const catsQuery = query(
+          collection(db, `boulderComps/${selectedComp}/categories`),
+          orderBy("order", "asc")
+        )
+        const catsSnapshot = await getDocs(catsQuery)
+        const catsMap = new Map<string, Category>()
+        const routesMap = new Map<string, RouteDoc>()
+        const finalRoutesMap = new Map<string, RouteDoc>()
+        const detailsMap = new Map<string, DetailDoc>()
+
+        for (const catDoc of catsSnapshot.docs) {
+          const catData = { id: catDoc.id, ...catDoc.data() } as Category
+          catsMap.set(catDoc.id, catData)
+
+          // Load routes for this category
+          const routesQuery = query(
+            collection(db, `boulderComps/${selectedComp}/categories/${catDoc.id}/routes`),
+            orderBy("order", "asc")
+          )
+          const routesSnapshot = await getDocs(routesQuery)
+          routesSnapshot.docs.forEach((routeDoc) => {
+            routesMap.set(routeDoc.id, { id: routeDoc.id, ...routeDoc.data() } as RouteDoc)
+          })
+
+          // Load final routes for this category
+          const finalRoutesQuery = query(
+            collection(db, `boulderComps/${selectedComp}/categories/${catDoc.id}/finalRoutes`),
+            orderBy("order", "asc")
+          )
+          const finalRoutesSnapshot = await getDocs(finalRoutesQuery)
+          finalRoutesSnapshot.docs.forEach((routeDoc) => {
+            finalRoutesMap.set(routeDoc.id, { id: routeDoc.id, ...routeDoc.data() } as RouteDoc)
+          })
+
+          // Load details for this category
+          const detailsQuery = query(
+            collection(db, `boulderComps/${selectedComp}/categories/${catDoc.id}/details`),
+            orderBy("order", "asc")
+          )
+          const detailsSnapshot = await getDocs(detailsQuery)
+          detailsSnapshot.docs.forEach((detailDoc) => {
+            detailsMap.set(detailDoc.id, { id: detailDoc.id, ...detailDoc.data() } as DetailDoc)
+          })
+        }
+
+        setCategories(catsMap)
+        setRoutes(routesMap)
+        setFinalRoutes(finalRoutesMap)
+        setDetails(detailsMap)
+      } catch (error) {
+        console.error("Error loading lookup data:", error)
+      }
+    }
+
+    loadLookupData()
+  }, [selectedComp])
+
+  // Subscribe to judgeStations when competition changes
+  useEffect(() => {
+    if (!firestore || !selectedComp) {
+      setJudgeStations([])
+      return
+    }
+    const db = firestore
+
+    setStationsLoading(true)
+    const stationsRef = collection(db, `boulderComps/${selectedComp}/judgeStations`)
+
+    const unsubscribe = onSnapshot(
+      stationsRef,
+      (snapshot) => {
+        const stationDocs = snapshot.docs.map((doc) => ({
+          stationKey: doc.id,
+          ...doc.data(),
+        })) as (JudgeStationDoc & { stationKey: string })[]
+
+        const now = new Date()
+        const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000)
+
+        // Convert to view models with labels, filtering out expired stations
+        const stationViews: JudgeStationView[] = stationDocs
+          .filter((s) => {
+            if (!s.ready) return false
+
+            // Filter out stations older than 15 minutes
+            if (s.updatedAt) {
+              const updatedDate = s.updatedAt.toDate()
+              if (updatedDate < fifteenMinutesAgo) {
+                return false
+              }
+            }
+
+            return true
+          })
+          .map((s) => {
+            // Resolve category name
+            const category = categories.get(s.categoryId)
+            const categoryName = category?.name || s.categoryId
+
+            // Resolve route label (check both routes and finalRoutes)
+            const route = s.round === "final"
+              ? finalRoutes.get(s.routeId) || routes.get(s.routeId)
+              : routes.get(s.routeId) || finalRoutes.get(s.routeId)
+            const routeLabel = route?.label || s.routeId
+
+            // Resolve detail label
+            let detailLabel = "Final"
+            if (s.round === "qualification" && s.detailIndex !== null) {
+              // Try to find detail by detailIndex
+              let foundDetail: DetailDoc | undefined
+              details.forEach((d) => {
+                if (d.detailIndex === String(s.detailIndex) || d.id === String(s.detailIndex)) {
+                  foundDetail = d
+                }
+              })
+              detailLabel = foundDetail?.label || `Group ${s.detailIndex}`
+            }
+
+            return {
+              ...s,
+              stationKey: s.stationKey,
+              categoryName,
+              routeLabel,
+              detailLabel,
+            }
+          })
+
+        setJudgeStations(stationViews)
+        setStationsLoading(false)
+      },
+      (error) => {
+        console.error("Error loading judge stations:", error)
+        setStationsLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [selectedComp, categories, routes, finalRoutes, details])
 
   const checklist = useMemo(() => {
     const hasCategories = categoriesCount > 0
@@ -241,32 +426,20 @@ function AdminInterface() {
 
   const setupItems = checklist
 
-  const stations: Station[] = [
-    {
-      id: "station-1",
-      name: "Station 1",
-      categoryName: "Youth C Girls",
-      detailLabel: "Group 1",
-      routeLabel: "B1",
-      ready: true,
-    },
-    {
-      id: "station-2",
-      name: "Station 2",
-      categoryName: "Youth C Girls",
-      detailLabel: "Group 2",
-      routeLabel: "B2",
-      ready: false,
-    },
-    {
-      id: "station-3",
-      name: "Station 3",
-      categoryName: "Youth C Boys",
-      detailLabel: "Group 1",
-      routeLabel: "B3",
-      ready: true,
-    },
-  ]
+  // Helper to format relative time
+  const formatRelativeTime = (timestamp: Timestamp | undefined): string => {
+    if (!timestamp) return ""
+    const date = timestamp.toDate()
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+
+    if (diffMins < 1) return "just now"
+    if (diffMins < 60) return `${diffMins}m ago`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+    return `${Math.floor(diffHours / 24)}d ago`
+  }
 
   return (
     <main className="py-6 min-h-screen bg-[#0b1220] text-gray-200">
@@ -380,40 +553,45 @@ function AdminInterface() {
 
               <div className="mt-5">
                 <h3 className="text-sm font-semibold text-gray-200 mb-3">Judge stations</h3>
-                <div className="space-y-3">
-                  {stations.map((station) => (
-                    <div
-                      key={station.id}
-                      className="rounded-xl border border-[#19bcd6]/50 bg-[#101a34]/40 px-4 py-3"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-semibold text-gray-100">{station.name}</div>
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            station.ready
-                              ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                              : "bg-amber-500/15 text-amber-200 border border-amber-400/30"
-                          }`}
-                        >
-                          {station.ready ? "Ready" : "Not ready"}
-                        </span>
+                {stationsLoading ? (
+                  <div className="rounded-xl border border-[#19bcd6]/50 bg-[#101a34]/40 px-4 py-6 text-center text-gray-400 text-sm">
+                    Loading stations...
+                  </div>
+                ) : judgeStations.length === 0 ? (
+                  <div className="rounded-xl border border-[#19bcd6]/50 bg-[#101a34]/40 px-4 py-6 text-center">
+                    <p className="text-gray-400 text-sm">No judge stations have been confirmed yet.</p>
+                    <p className="text-gray-500 text-xs mt-1">Judges can confirm their station from the Judge page.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {judgeStations.map((station) => (
+                      <div
+                        key={station.stationKey}
+                        className="rounded-xl border border-[#19bcd6]/50 bg-[#101a34]/40 px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-semibold text-gray-100">
+                            {station.categoryName} · {station.detailLabel}
+                          </div>
+                          <span className="rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            Ready {station.updatedAt && `(${formatRelativeTime(station.updatedAt)})`}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-300">
+                          <span>
+                            <strong className="text-gray-200">Route:</strong> {station.routeLabel}
+                          </span>
+                          <span className="mx-2">·</span>
+                          <span>
+                            <strong className="text-gray-200">Round:</strong> {station.round === "final" ? "Final" : "Qualification"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-1 grid grid-cols-1 gap-1 text-xs text-gray-300 sm:grid-cols-3">
-                        <span>
-                          <strong className="text-gray-200">Category:</strong> {station.categoryName}
-                        </span>
-                        <span>
-                          <strong className="text-gray-200">Detail:</strong> {station.detailLabel}
-                        </span>
-                        <span>
-                          <strong className="text-gray-200">Route:</strong> {station.routeLabel}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
                 <p className="mt-3 text-xs text-gray-500">
-                  Legend: Ready = judge has confirmed this station on their device. Not ready = no confirmation yet.
+                  Ready = judge has confirmed this station on their device. Judges confirm their station from the Judge page.
                 </p>
               </div>
             </section>
