@@ -25,7 +25,7 @@ const buildJudgeUid = (compId: string) => {
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { compId, passcode } = body as { compId?: string; passcode?: string }
+    const { compId, passcode, discipline } = body as { compId?: string; passcode?: string; discipline?: string }
 
     if (!compId || !passcode) {
       return NextResponse.json(
@@ -35,7 +35,8 @@ export async function POST(req: Request) {
     }
 
     const adminDb = getAdminDb()
-    const compRef = adminDb.collection("boulderComps").doc(compId)
+    const collectionName = discipline === "speed" ? "speedCompetitions" : "boulderComps"
+    const compRef = adminDb.collection(collectionName).doc(compId)
 
     const [compSnap, passcodeSnap] = await Promise.all([
       compRef.get(),
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
       passcodeVersion,
       sessionExpiresAt: expiresAt,
       sessionDurationMs: SESSION_DURATION_MS,
+      discipline: collectionName === "speedCompetitions" ? "speed" : "boulder",
     })
   } catch (error) {
     console.error("[Judge Passcode] POST error:", error)
@@ -93,7 +95,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}))
-    const { compId, passcode } = body as { compId?: string; passcode?: string }
+    const { compId, passcode, discipline } = body as { compId?: string; passcode?: string; discipline?: string }
 
     if (!compId || !passcode) {
       return NextResponse.json(
@@ -118,7 +120,8 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const compRef = adminDb.collection("boulderComps").doc(compId)
+    const collectionName = discipline === "speed" ? "speedCompetitions" : "boulderComps"
+    const compRef = adminDb.collection(collectionName).doc(compId)
     const compSnap = await compRef.get()
     if (!compSnap.exists) {
       return NextResponse.json({ error: "Competition not found" }, { status: 404 })
@@ -150,6 +153,7 @@ export async function PUT(req: Request) {
       compId,
       passcodeVersion,
       sessionDurationMs: SESSION_DURATION_MS,
+      discipline: collectionName === "speedCompetitions" ? "speed" : "boulder",
     })
   } catch (error) {
     console.error("[Judge Passcode] PUT error:", error)

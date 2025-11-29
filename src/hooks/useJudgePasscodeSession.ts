@@ -14,6 +14,7 @@ type JudgeSession = {
 }
 
 const ALLOWED_ROLES = ["judge", "staff", "admin"]
+type JudgeDiscipline = "boulder" | "speed"
 
 const parseSessionFromUser = async (user: User): Promise<JudgeSession | null> => {
   const tokenResult = await user.getIdTokenResult()
@@ -94,7 +95,7 @@ export function useJudgePasscodeSession() {
     return () => unsubscribe()
   }, [])
 
-  const signInWithPasscode = useCallback(async (compId: string, passcode: string) => {
+  const signInWithPasscode = useCallback(async (compId: string, passcode: string, discipline: JudgeDiscipline = "boulder") => {
     if (!firebaseAuth) throw new Error("Firebase is not configured")
     setSigningIn(true)
     setError(null)
@@ -107,7 +108,7 @@ export function useJudgePasscodeSession() {
       const response = await fetch("/api/judge-passcode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ compId, passcode }),
+        body: JSON.stringify({ compId, passcode, discipline }),
       })
 
       const data = await response.json().catch(() => null)
