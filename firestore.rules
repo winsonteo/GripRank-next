@@ -29,6 +29,22 @@ service cloud.firestore {
       );
     }
 
+    // Speed judges use the same passcode/token model scoped to speed competitions
+    function isSpeedJudgeForComp(compId) {
+      return isSignedIn() && (
+        isAdminOrStaff() || (
+          request.auth.token.authType == 'judge-passcode' &&
+          request.auth.token.role == 'judge' &&
+          request.auth.token.compId == compId &&
+          request.auth.token.passcodeVersion is string &&
+          get(/databases/$(db)/documents/speedCompetitions/$(compId)).data.judgePasscodeVersion is string &&
+          request.auth.token.passcodeVersion == get(/databases/$(db)/documents/speedCompetitions/$(compId)).data.judgePasscodeVersion &&
+          request.auth.token.sessionExpiresAt is int &&
+          request.time.toMillis() <= request.auth.token.sessionExpiresAt
+        )
+      );
+    }
+
     /* ================= BOULDER (boulderComps) ================= */
     match /boulderComps/{compId} {
       allow read: if true;
@@ -159,6 +175,65 @@ service cloud.firestore {
       // Private competition settings (e.g., judge passcodes)
       match /private/{docId} {
         allow read, write: if isAdminOrStaff();
+      }
+    }
+
+    /* ================= SPEED (speedCompetitions) ================= */
+    match /speedCompetitions/{compId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrStaff();
+
+      match /categories/{catId} {
+        allow read: if true;
+        allow write: if isAdminOrStaff();
+
+        match /athletes/{athleteId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+        }
+
+        match /startlist/{docId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+        }
+
+        // Legacy qualifier startlist fallback
+        match /qualifierStartlist/{docId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+        }
+
+        match /qualifierResults/{resultId} {
+          allow read: if true;
+          allow create, update: if isSpeedJudgeForComp(compId);
+          allow delete: if isAdminOrStaff();
+        }
+
+        match /computed/{docId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+        }
+
+        match /finals/{docId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+
+          // finals/meta document
+          match /meta {
+            allow read: if true;
+            allow write: if isAdminOrStaff();
+
+            match /rounds/{roundId} {
+              allow read: if true;
+              allow write: if isAdminOrStaff();
+
+              match /matches/{matchId} {
+                allow read: if true;
+                allow write: if isAdminOrStaff();
+              }
+            }
+          }
+        }
       }
     }
 
