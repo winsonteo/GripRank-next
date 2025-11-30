@@ -11,9 +11,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.role in roles;
     }
 
-    function isAdminOrStaff() { return hasRole(['staff', 'admin']); }
+    function isAdminOrStaff() {
+      return hasRole(['staff', 'admin']);
+    }
 
-    // Passcode-based judges only (comp-scoped, versioned, expiring)
+    // Passcode-based judges only (comp-scoped, versioned, expiring) for Boulder / competitions
     function isJudgeForComp(compId) {
       return isSignedIn() && (
         isAdminOrStaff() || (
@@ -102,7 +104,7 @@ service cloud.firestore {
         // Writes restricted to authenticated judges/staff/admin using token role claims.
         allow create, update: if isJudgeForComp(compId)
                               && request.resource.data.compId == compId
-                              && request.resource.data.symbol in ['1','Z','T'];
+                              && request.resource.data.symbol in ['1', 'Z', 'T'];
         allow delete: if isAdminOrStaff();
       }
 
@@ -126,7 +128,10 @@ service cloud.firestore {
       }
     }
 
-    /* ================= COMPETITIONS (new structure) ================= */
+    /* ================= COMPETITIONS (new structure) =================
+       NOTE: /competitions is a WIP unified structure for future use.
+       Current production still primarily uses /boulderComps and /speedCompetitions.
+    ================================================================ */
     match /competitions/{compId} {
       allow read: if true;
       allow create, update, delete: if isAdminOrStaff();
@@ -168,7 +173,7 @@ service cloud.firestore {
         // Writes restricted to authenticated judges/staff/admin using token role claims.
         allow create, update: if isJudgeForComp(compId)
                               && request.resource.data.compId == compId
-                              && request.resource.data.symbol in ['1','Z','T'];
+                              && request.resource.data.symbol in ['1', 'Z', 'T'];
         allow delete: if isAdminOrStaff();
       }
 
@@ -205,7 +210,11 @@ service cloud.firestore {
 
         match /qualifierResults/{resultId} {
           allow read: if true;
-          allow create, update: if isSpeedJudgeForComp(compId);
+
+          // Restrict writes to judges for this comp, and enforce comp/category consistency
+          allow create, update: if isSpeedJudgeForComp(compId)
+                                && request.resource.data.compId == compId
+                                && request.resource.data.categoryId == catId;
           allow delete: if isAdminOrStaff();
         }
 
@@ -214,23 +223,18 @@ service cloud.firestore {
           allow write: if isAdminOrStaff();
         }
 
-        match /finals/{docId} {
+        // Finals tree: finals/{finalId}/rounds/{roundId}/matches/{matchId}
+        match /finals/{finalId} {
           allow read: if true;
           allow write: if isAdminOrStaff();
 
-          // finals/meta document
-          match /meta {
+          match /rounds/{roundId} {
             allow read: if true;
             allow write: if isAdminOrStaff();
 
-            match /rounds/{roundId} {
+            match /matches/{matchId} {
               allow read: if true;
               allow write: if isAdminOrStaff();
-
-              match /matches/{matchId} {
-                allow read: if true;
-                allow write: if isAdminOrStaff();
-              }
             }
           }
         }
