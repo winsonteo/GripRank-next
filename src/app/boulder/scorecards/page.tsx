@@ -15,6 +15,8 @@ import {
   getDocs,
   query,
   where,
+  doc,
+  getDoc,
 } from "firebase/firestore"
 import { firestore } from "@/lib/firebase/client"
 
@@ -36,6 +38,8 @@ type ScorecardBlock = {
   routes: RouteMeta[]
   routeLabels: Map<string, string>
   athletes: Athlete[]
+  round: RoundType
+  qualifierRanks?: Map<string, number>
 }
 
 type RoundType = "qualification" | "final"
@@ -242,26 +246,66 @@ function ScorecardsInterface() {
         const routes = await fetchRoutes(selectedCompId, cat.id, round)
         const routeLabels = new Map(routes.map((r) => [r.id, r.label]))
 
-        const athletesQuery = query(
-          collection(db, `boulderComps/${selectedCompId}/athletes`),
-          where("categoryId", "==", cat.id)
-        )
-        const athSnap = await getDocs(athletesQuery)
-        const athletes = athSnap.docs
-          .map((d) => {
-            const { id: _id, ...rest } = d.data() as Athlete
-            void _id
-            return { id: d.id, ...rest }
-          })
-          .filter((ath) => {
-            if (!detailFilter) return true
-            const raw = ath.detailIndex
-            if (raw == null) return false
-            return String(raw) === detailFilter
-          })
-          .sort((a, b) =>
-            String(a.bib || "").localeCompare(String(b.bib || ""), undefined, { numeric: true, sensitivity: "base" })
+        let athletes: Athlete[] = []
+        let qualifierRanks: Map<string, number> | undefined = undefined
+
+        if (round === "final") {
+          // Load finalists from startlist
+          const startlistRef = doc(db, `boulderComps/${selectedCompId}/categories/${cat.id}/finals`, "startlist")
+          const startlistSnap = await getDoc(startlistRef)
+
+          if (startlistSnap.exists()) {
+            const entries = (startlistSnap.data()?.entries || []) as Array<{ athleteId: string; qualifierRank: number }>
+            const athleteIds = entries.map(e => e.athleteId)
+
+            // Create rank map for sorting and display
+            const rankMap = new Map(entries.map(e => [e.athleteId, e.qualifierRank]))
+            qualifierRanks = rankMap
+
+            // Load all athletes in category
+            const athletesQuery = query(
+              collection(db, `boulderComps/${selectedCompId}/athletes`),
+              where("categoryId", "==", cat.id)
+            )
+            const athSnap = await getDocs(athletesQuery)
+
+            // Filter to only finalists and sort by qualifier rank
+            athletes = athSnap.docs
+              .map((d) => {
+                const { id: _id, ...rest } = d.data() as Athlete
+                void _id
+                return { id: d.id, ...rest }
+              })
+              .filter((ath) => athleteIds.includes(ath.id))
+              .sort((a, b) => {
+                const rankA = rankMap.get(a.id) || 999
+                const rankB = rankMap.get(b.id) || 999
+                return rankA - rankB
+              })
+          }
+        } else {
+          // Load qualification athletes
+          const athletesQuery = query(
+            collection(db, `boulderComps/${selectedCompId}/athletes`),
+            where("categoryId", "==", cat.id)
           )
+          const athSnap = await getDocs(athletesQuery)
+          athletes = athSnap.docs
+            .map((d) => {
+              const { id: _id, ...rest } = d.data() as Athlete
+              void _id
+              return { id: d.id, ...rest }
+            })
+            .filter((ath) => {
+              if (!detailFilter) return true
+              const raw = ath.detailIndex
+              if (raw == null) return false
+              return String(raw) === detailFilter
+            })
+            .sort((a, b) =>
+              String(a.bib || "").localeCompare(String(b.bib || ""), undefined, { numeric: true, sensitivity: "base" })
+            )
+        }
 
         blocks.push({
           compId: selectedCompId,
@@ -270,6 +314,8 @@ function ScorecardsInterface() {
           routes,
           routeLabels,
           athletes,
+          round,
+          qualifierRanks,
         })
       }
 
@@ -415,6 +461,7 @@ function ScorecardsInterface() {
               <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2">
                 {block.athletes.map((ath) => {
                   const detailDisplay = ath.detailIndex != null ? `Detail ${ath.detailIndex}` : "—"
+                  const qualifierRankDisplay = block.qualifierRanks?.get(ath.id) || "—"
                   const bibDisplay = ath.bib != null ? String(ath.bib) : "—"
                   return (
                     <article
@@ -433,9 +480,15 @@ function ScorecardsInterface() {
                             <span className="mr-3">
                               <strong>Category:</strong> {block.categoryName}
                             </span>
-                            <span>
-                              <strong>Detail:</strong> {detailDisplay}
-                            </span>
+                            {block.round === "final" ? (
+                              <span>
+                                <strong>Qualifier Rank:</strong> {qualifierRankDisplay}
+                              </span>
+                            ) : (
+                              <span>
+                                <strong>Detail:</strong> {detailDisplay}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col items-center text-xs text-gray-400 print:text-black">

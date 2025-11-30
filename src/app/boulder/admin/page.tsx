@@ -638,9 +638,13 @@ function AdminInterface() {
               />
               <ToolTile
                 title="Export results"
-                description="Coming soon."
-                href="#"
-                disabled
+                description="Download qualification and finals results as CSV."
+                href="/boulder/export"
+              />
+              <ToolTile
+                title="Generate finals"
+                description="Select finalists from qualification with tie handling."
+                href="/boulder/finals"
               />
               <ToolTile
                 title="Lock competition"
