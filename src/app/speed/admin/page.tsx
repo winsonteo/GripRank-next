@@ -116,8 +116,8 @@ function AdminInterface({ firestore }: { firestore: Firestore }) {
     async function loadCats() {
       try {
         const snap = await getDocs(collection(firestore, `speedCompetitions/${selectedComp}/categories`))
-        const list = snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() || {}) }))
+        const list: SpeedCategory[] = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Partial<SpeedCategory>) }))
           .sort((a, b) => {
             const orderA = typeof a.order === "number" ? a.order : Number.POSITIVE_INFINITY
             const orderB = typeof b.order === "number" ? b.order : Number.POSITIVE_INFINITY
