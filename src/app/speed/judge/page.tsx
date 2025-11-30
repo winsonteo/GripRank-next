@@ -270,7 +270,7 @@ function JudgeInterface({ authState, firestore }: { authState: JudgeAuthState; f
     }
   }, [selectedComp, selectedCategory, firestore])
 
-  const compLocked = session?.authType === "judge-passcode" && session.compId
+  const compLocked = session?.authType === "judge-passcode" && Boolean(session.compId)
 
   const laneLabel = useMemo(() => {
     const map = new Map<string, SpeedAthlete>()
