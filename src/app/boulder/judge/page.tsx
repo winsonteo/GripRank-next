@@ -16,6 +16,7 @@ import {
   addDoc,
   setDoc,
   doc,
+  getDoc,
   serverTimestamp,
   onSnapshot,
   limit,
@@ -511,8 +512,33 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
           ...doc.data(),
         })) as Athlete[];
 
+        // For final rounds, load finalists from startlist in reverse order
+        if (round === "final") {
+          const startlistRef = doc(db, `boulderComps/${selectedComp}/categories/${selectedCategory}/finals`, "startlist");
+          const startlistSnap = await getDoc(startlistRef);
+
+          if (startlistSnap.exists()) {
+            const entries = (startlistSnap.data()?.entries || []) as Array<{ athleteId: string; qualifierRank: number }>;
+            const athleteIds = entries.map(e => e.athleteId);
+            const rankMap = new Map(entries.map(e => [e.athleteId, e.qualifierRank]));
+
+            // Filter to only finalists and sort in REVERSE order by qualifier rank
+            // Top qualifier (rank 1) should be LAST, rank 8 should be FIRST
+            allAthletes = allAthletes
+              .filter((athlete) => athleteIds.includes(athlete.id))
+              .sort((a, b) => {
+                const rankA = rankMap.get(a.id) || 999;
+                const rankB = rankMap.get(b.id) || 999;
+                // Reverse sort: higher rank number comes first
+                return rankB - rankA;
+              });
+          } else {
+            // No startlist found, clear athletes
+            allAthletes = [];
+          }
+        }
         // For qualification rounds, filter by detail
-        if (round === "qualification" && selectedDetail) {
+        else if (round === "qualification" && selectedDetail) {
           const selectedDetailObj = details.find(d => d.id === selectedDetail);
           const detailIndexToMatch = selectedDetailObj?.detailIndex || selectedDetailObj?.id || selectedDetail;
 
@@ -520,14 +546,14 @@ function JudgeInterface({ authState }: { authState: JudgeAuthState }) {
             const athleteDetail = athlete.detailIndex || athlete.detail || athlete.detailId;
             return athleteDetail && String(athleteDetail) === String(detailIndexToMatch);
           });
-        }
 
-        // Sort by bib number
-        allAthletes.sort((a, b) => {
-          const bibA = a.bib ? parseInt(a.bib, 10) : Number.MAX_SAFE_INTEGER;
-          const bibB = b.bib ? parseInt(b.bib, 10) : Number.MAX_SAFE_INTEGER;
-          return bibA - bibB;
-        });
+          // Sort by bib number for qualification
+          allAthletes.sort((a, b) => {
+            const bibA = a.bib ? parseInt(a.bib, 10) : Number.MAX_SAFE_INTEGER;
+            const bibB = b.bib ? parseInt(b.bib, 10) : Number.MAX_SAFE_INTEGER;
+            return bibA - bibB;
+          });
+        }
 
         setAthletes(allAthletes);
       } catch (error) {

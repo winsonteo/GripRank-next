@@ -112,6 +112,7 @@ function AdminInterface({ firestore }: { firestore: Firestore }) {
   const [compLoading, setCompLoading] = useState(false)
   const [selectedComp, setSelectedComp] = useState("")
   const [categories, setCategories] = useState<SpeedCategory[]>([])
+  const [selectedCategory, setSelectedCategory] = useState("")
   const [athletes, setAthletes] = useState<SpeedAthlete[]>([])
 
   const [newCompName, setNewCompName] = useState("")
