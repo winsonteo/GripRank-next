@@ -319,6 +319,8 @@ function JudgeInterface({ authState, firestore }: { authState: JudgeAuthState; f
       }
       const payload: Record<string, unknown> = {
         updatedAt: serverTimestamp(),
+        compId: selectedComp,
+        categoryId: selectedCategory,
         [runKey]: base,
       }
       if (falseStartRule === "IFSC" && runKey === "runA" && status === "FS") {

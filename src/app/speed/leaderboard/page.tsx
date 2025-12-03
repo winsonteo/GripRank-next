@@ -256,11 +256,11 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
       db,
       `speedCompetitions/${selectedComp}/categories/${selectedCategory}/qualifierResults`
     )
-    const finalsMetaRef = doc(
+    const finalsDocRef = doc(
       db,
-      `speedCompetitions/${selectedComp}/categories/${selectedCategory}/finals/meta`
+      `speedCompetitions/${selectedComp}/categories/${selectedCategory}/finals/default`
     )
-    const roundsCol = collection(finalsMetaRef, "rounds")
+    const roundsCol = collection(finalsDocRef, "rounds")
 
     const unsubscribers: Unsubscribe[] = []
     let cleanupRoundMatches: () => void = () => {}
@@ -293,7 +293,7 @@ function LeaderboardContent({ firestore }: { firestore: Firestore }) {
     unsubscribers.push(unsubResults)
 
     const unsubMeta = onSnapshot(
-      finalsMetaRef,
+      finalsDocRef,
       (snap) => {
         if (token !== renderTokenRef.current) return
         setFinalsMeta(snap.exists() ? (snap.data() as FinalsMeta) : null)
