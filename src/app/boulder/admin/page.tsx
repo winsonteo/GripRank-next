@@ -622,6 +622,11 @@ function AdminInterface() {
                 href="/boulder/scorecards"
               />
               <ToolTile
+                title="Startlists"
+                description="Print competition startlists by category."
+                href="/boulder/startlist"
+              />
+              <ToolTile
                 title="Judge Panel"
                 description="Per-station input for judges."
                 href="/boulder/judge"
