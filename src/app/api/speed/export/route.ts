@@ -65,10 +65,10 @@ export async function GET(req: NextRequest) {
 
     // Athletes map
     const athletesSnap = await catRef.collection("athletes").get()
-    const athletes = athletesSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }))
+    const athletes = athletesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }))
     const nameOf = (aid?: string | null) => {
       if (!aid) return "—"
-      const a = athletes.find((x) => x.id === aid)
+      const a = athletes.find((x) => x.id === aid) as { id: string; name?: string; team?: string } | undefined
       if (!a) return aid
       return a.team ? `${a.name} (${a.team})` : a.name || aid
     }
