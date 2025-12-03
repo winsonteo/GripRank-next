@@ -7,7 +7,7 @@ import { connectAuthEmulator, getAuth } from "firebase/auth";
 import type { Firestore } from "firebase/firestore";
 import {
   connectFirestoreEmulator,
-  enableIndexedDbPersistence,
+  enableMultiTabIndexedDbPersistence,
   getFirestore,
 } from "firebase/firestore";
 
@@ -94,9 +94,11 @@ function initPersistence(db: Firestore) {
     return;
   }
 
-  persistencePromise = enableIndexedDbPersistence(db).catch((error) => {
+  // Enable multi-tab IndexedDB persistence to allow multiple tabs to share data
+  // This prevents "exclusive access" errors when multiple tabs are open
+  persistencePromise = enableMultiTabIndexedDbPersistence(db).catch((error) => {
     // Silently fail on persistence errors - this is not critical
-    // Common errors: multiple tabs, private browsing, quota exceeded, already initialized
+    // Common errors: private browsing, quota exceeded, already initialized
     if (error?.code !== 'failed-precondition' && process.env.NODE_ENV !== "production") {
       console.warn("[firebase] IndexedDB persistence not available:", error?.code || error?.message);
     }
