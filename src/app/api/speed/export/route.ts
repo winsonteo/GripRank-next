@@ -65,10 +65,14 @@ export async function GET(req: NextRequest) {
 
     // Athletes map
     const athletesSnap = await catRef.collection("athletes").get()
-    const athletes = athletesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }))
+    const athletes = athletesSnap.docs.map((d) => ({
+      id: d.id,
+      name: d.data().name as string | undefined,
+      team: d.data().team as string | undefined,
+    }))
     const nameOf = (aid?: string | null) => {
       if (!aid) return "—"
-      const a = athletes.find((x) => x.id === aid) as { id: string; name?: string; team?: string } | undefined
+      const a = athletes.find((x) => x.id === aid)
       if (!a) return aid
       return a.team ? `${a.name} (${a.team})` : a.name || aid
     }
@@ -142,7 +146,10 @@ export async function GET(req: NextRequest) {
     for (const roundDoc of roundsCol.docs) {
       const matchesSnap = await roundDoc.ref.collection("matches").get()
       finalsRounds[roundDoc.id] = matchesSnap.docs
-        .map((m) => ({ id: m.id, ...(m.data() || {}) }))
+        .map((m) => {
+          const data = m.data() || {}
+          return { id: m.id, matchIndex: data.matchIndex as number | undefined, ...data }
+        })
         .sort((a, b) => (a.matchIndex || 0) - (b.matchIndex || 0))
     }
 

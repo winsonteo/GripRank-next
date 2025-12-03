@@ -112,6 +112,7 @@ function AdminInterface({ firestore }: { firestore: Firestore }) {
   const [compLoading, setCompLoading] = useState(false)
   const [selectedComp, setSelectedComp] = useState("")
   const [categories, setCategories] = useState<SpeedCategory[]>([])
+  const [selectedCategory, setSelectedCategory] = useState("")
   const [athletes, setAthletes] = useState<SpeedAthlete[]>([])
 
   const [newCompName, setNewCompName] = useState("")
@@ -167,13 +168,14 @@ function AdminInterface({ firestore }: { firestore: Firestore }) {
             return (a.name || a.id || "").localeCompare(b.name || b.id || "")
           })
         setCategories(list)
+        if (!selectedCategory && list.length) setSelectedCategory(list[0].id)
       } catch (error) {
         console.error(error)
         setCategories([])
       }
     }
     loadCats()
-  }, [selectedComp, firestore])
+  }, [selectedComp, selectedCategory, firestore])
 
   // Load athletes for selected category (used in finals editing)
   useEffect(() => {

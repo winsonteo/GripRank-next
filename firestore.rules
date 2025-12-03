@@ -90,6 +90,12 @@ service cloud.firestore {
             allow write: if isAdminOrStaff();
           }
         }
+
+        // Finals data (startlist, meta)
+        match /finals/{docId} {
+          allow read: if true;
+          allow write: if isAdminOrStaff();
+        }
       }
 
       match /athletes/{athleteId} {

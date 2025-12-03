@@ -76,6 +76,7 @@ function ExportInterface() {
     if (!firestore) return
 
     const loadComps = async () => {
+      if (!firestore) return
       try {
         if (discipline === "boulder") {
           const snapshot = await getDocs(collection(firestore, "boulderComps"))
@@ -119,6 +120,7 @@ function ExportInterface() {
     }
 
     const loadCategories = async () => {
+      if (!firestore) return
       try {
         const collectionName = discipline === "boulder" ? "boulderComps" : "speedCompetitions"
         const catsQuery = query(
