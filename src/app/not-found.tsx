@@ -38,7 +38,7 @@ export default function NotFound() {
 
         <CardHeader className="flex flex-col items-center pb-2 pt-10">
           {/* ILLUSTRATION */}
-          <div className="relative w-48 h-48 mb-6">
+          <div className="relative w-full max-w-2xl h-64 md:h-80 mb-6">
             <Image
               src="/images/climbing-route-404.png"
               alt="Climbing wall with missing hold"
