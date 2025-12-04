@@ -34,11 +34,11 @@ export default function NotFound() {
       </div>
 
       {/* --- MAIN CARD --- */}
-      <Card className="relative z-10 w-full max-w-lg border-slate-200 shadow-xl bg-white/90 backdrop-blur-sm">
+      <Card className="relative z-10 w-full max-w-5xl border-slate-200 shadow-xl bg-white/90 backdrop-blur-sm">
 
         <CardHeader className="flex flex-col items-center pb-2 pt-10">
           {/* ILLUSTRATION */}
-          <div className="relative w-full max-w-6xl h-[512px] md:h-[640px] mb-6">
+          <div className="relative w-full h-[512px] md:h-[640px] mb-6">
             <Image
               src="/images/climbing-route-404.png"
               alt="Climbing wall with missing hold"
