@@ -36,9 +36,9 @@ export default function NotFound() {
       {/* --- MAIN CARD --- */}
       <Card className="relative z-10 w-full max-w-5xl border-slate-200 shadow-xl bg-white/90 backdrop-blur-sm">
 
-        <CardHeader className="flex flex-col items-center p-4">
+        <CardHeader className="flex flex-col items-center pt-6 pb-3 px-6">
           {/* ILLUSTRATION */}
-          <div className="relative w-full h-[512px] md:h-[640px] mb-2">
+          <div className="relative w-full h-[512px] md:h-[640px] mb-4">
             <Image
               src="/images/climbing-route-404.png"
               alt="Climbing wall with missing hold"
@@ -54,7 +54,7 @@ export default function NotFound() {
           </h1>
         </CardHeader>
 
-        <CardContent className="text-center space-y-8 px-4 md:px-6">
+        <CardContent className="text-center space-y-6 px-6 md:px-8 pb-6">
           {/* BODY COPY */}
           <p className="text-slate-600 leading-relaxed">
             Looks like you&apos;ve wandered off-route. This page doesn&apos;t exist or the link might be expired. Let&apos;s get you back to base or check the live leaderboards.
@@ -78,7 +78,7 @@ export default function NotFound() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col items-center pb-4">
+        <CardFooter className="flex flex-col items-center pt-2 pb-6">
            {/* TERTIARY LINK */}
            <Link
             href="/contact"
